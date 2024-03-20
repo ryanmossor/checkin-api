@@ -39,7 +39,7 @@ services:
       - ACCEPT_EULA=Y
       - SEQ_API_IDLESESSIONEXPIRYSECONDS=999999999
     volumes:
-      - /home/ryan/docker/volumes/seq/data:/data
+      - ${HOME}/docker/volumes/seq/data:/data
     restart: unless-stopped
     networks:
       api-network:
