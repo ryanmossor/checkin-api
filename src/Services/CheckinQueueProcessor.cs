@@ -36,19 +36,13 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
                 if (item.SleepStart.HasValue && item.SleepEnd.HasValue)
                 {
-                    var bedtime = DateTimeOffset.FromUnixTimeSeconds(item.SleepStart.Value).LocalDateTime.ToString("h:mm:00 tt");
-                    var wakeUpTime = DateTimeOffset.FromUnixTimeSeconds(item.SleepEnd.Value).LocalDateTime.ToString("h:mm:00 tt");
                     var totalTime = TimeSpan.FromSeconds(item.SleepEnd.Value - item.SleepStart.Value).ToString(@"h\:mm");
-                    
-                    item.FormResponse["Bedtime"] = bedtime;
-                    item.FormResponse["Wake-up time"] = wakeUpTime;
                     item.FormResponse["Total Time in Bed"] = totalTime;
                 }
                 else
                 {
                     _logger.LogWarning(
-                        "Missing sleep start and/or end time for {date}: {sleepStart}, {sleepEnd}",
-                        item.CheckinFields.Date, item.SleepStart, item.SleepEnd); 
+                        "Missing sleep start and/or end time: {sleepStart}, {sleepEnd}", item.SleepStart, item.SleepEnd); 
                 }
 
                 var today = item.CheckinFields.Date;
