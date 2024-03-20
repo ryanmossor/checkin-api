@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  
+  checkin-api:
+    container_name: checkin-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:80"
+    environment:
+      - TZ=${TIMEZONE}
+      - DOTNET_CLI_TELEMETRY_OPTOUT=1
+      #- ASPNETCORE_HTTP_PORTS=5000
+      #- ASPNETCORE_URLS=http://+:5000
+    volumes:
+      - ${HOME}/docker/volumes/checkin-api:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: on-failure
+    depends_on:
+      - seq
+    networks:
+      api-network:
+        ipv4_address: 172.40.0.2
+  
+  seq:
+    image: datalust/seq
+    container_name: seq
+    ports: 
+      - "45341:80"
+      - "5341:5341"
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_API_IDLESESSIONEXPIRYSECONDS=999999999
+    volumes:
+      - /home/ryan/docker/volumes/seq/data:/data
+    restart: unless-stopped
+    networks:
+      api-network:
+        ipv4_address: 172.40.0.99
+    
+networks:
+  api-network:
+    ipam:
+      config:
+        - subnet: 172.40.0.0/24
