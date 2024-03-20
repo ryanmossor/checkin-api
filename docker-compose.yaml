@@ -35,6 +35,7 @@ services:
       - "45341:80"
       - "5341:5341"
     environment:
+      - TZ=${TIMEZONE}
       - ACCEPT_EULA=Y
       - SEQ_API_IDLESESSIONEXPIRYSECONDS=999999999
     volumes:
