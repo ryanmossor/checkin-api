@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using CheckinApi.Extensions;
 
-namespace CheckinApi;
+namespace CheckinApi.Services;
 
 public class CheckinLists : ICheckinLists
 {

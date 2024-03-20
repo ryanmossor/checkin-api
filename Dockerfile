@@ -5,11 +5,11 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 ARG BUILD_CONFIGURATION=Release
-WORKDIR /src
-COPY ["CheckinApi.csproj", "./"]
+WORKDIR /app
+COPY ["src/CheckinApi.csproj", "./"]
 RUN dotnet restore "CheckinApi.csproj"
 COPY . .
-WORKDIR "/src/"
+WORKDIR "/app/src/"
 RUN dotnet build "CheckinApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish

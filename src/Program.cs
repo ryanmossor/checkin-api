@@ -1,4 +1,4 @@
-using CheckinApi;
+using CheckinApi.Services;
 using Serilog;
 using Serilog.Events;
 

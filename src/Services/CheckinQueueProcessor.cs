@@ -2,7 +2,7 @@ using System.Diagnostics;
 using CheckinApi.Extensions;
 using CheckinApi.Models;
 
-namespace CheckinApi;
+namespace CheckinApi.Services;
 
 public class CheckinQueueProcessor : ICheckinQueueProcessor
 {

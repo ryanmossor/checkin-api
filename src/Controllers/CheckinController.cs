@@ -1,5 +1,6 @@
 using CheckinApi.Extensions;
 using CheckinApi.Models;
+using CheckinApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CheckinApi.Controllers;
