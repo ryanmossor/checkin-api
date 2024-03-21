@@ -8,6 +8,7 @@ Log.Logger = new LoggerConfiguration()
      .Enrich.FromLogContext()
      .MinimumLevel.Debug()
      .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+     .MinimumLevel.Override("System.Net.Http", builder.Environment.IsDevelopment() ? LogEventLevel.Debug : LogEventLevel.Warning)
      .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
      .WriteTo.Seq(builder.Configuration["Serilog:WriteTo:0:Args:serverUrl"] ?? string.Empty)
      .CreateLogger();
@@ -18,7 +19,11 @@ builder.Host.UseSerilog(dispose: true);
 // configures Serilog as one of multiple potential logging providers
 // builder.Services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true));
 
+builder.Services.AddHttpClient();
+
 builder.Services.AddSingleton<ICheckinLists, CheckinLists>();
+builder.Services.AddSingleton<IActivityService, StravaService>();
+builder.Services.AddSingleton<IHealthTrackingService, FitbitService>();
 builder.Services.AddSingleton<ICheckinQueueProcessor, CheckinQueueProcessor>();
 
 builder.Services.AddControllers();

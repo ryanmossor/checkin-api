@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CheckinApi.Extensions;
 using CheckinApi.Models;
+using CheckinApi.Models.Strava;
 
 namespace CheckinApi.Services;
 
@@ -8,28 +9,42 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 {
     private readonly ILogger<CheckinQueueProcessor> _logger;
     private readonly ICheckinLists _lists;
-    
-    public CheckinQueueProcessor(ILogger<CheckinQueueProcessor> logger, ICheckinLists lists)
+    private readonly IActivityService _activityService;
+    private readonly IHealthTrackingService _healthTrackingService;
+
+    public CheckinQueueProcessor(
+        ICheckinLists lists,
+        IActivityService activityService,
+        IHealthTrackingService healthTrackingService,
+        ILogger<CheckinQueueProcessor> logger)
     {
-        _logger = logger;
         _lists = lists;
+        _activityService = activityService;
+        _healthTrackingService = healthTrackingService;
+        _logger = logger;
     }
 
-    public async Task<CheckinResponse> Process(CheckinRequest request)
+    public async Task<CheckinResponse> Process(List<CheckinItem> queue)
     {
         var stopwatch = Stopwatch.StartNew();
         var unprocessed = new List<CheckinItem>();
         var results = new List<CheckinResult>();
 
         var existingFiles = Directory.GetFiles("./data/results").Select(Path.GetFileNameWithoutExtension).ToList();
-                    
-        foreach (var item in request.Queue)
+
+        StravaActivity[]? activityData = null;
+        if (queue.Any(queueItem => queueItem.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key))))
+        {
+            activityData = await _activityService.GetActivityData(queue);
+        }
+
+        foreach (var item in queue)
         {
             using (_logger.BeginScope("Processing check-in item for {date}", item.CheckinFields.Date))
             {
                 if (!item.FormResponse.TryGetValue("Feel Well-Rested", out _))
                 {
-                    _logger.LogInformation("Morning check-in not completed. Skipping...");
+                    _logger.LogInformation("Morning check-in not completed. Skipping {@item}", item);
                     unprocessed.Add(item);
                     continue;
                 }
@@ -45,27 +60,44 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                         "Missing sleep start and/or end time: {sleepStart}, {sleepEnd}", item.SleepStart, item.SleepEnd); 
                 }
 
-                var today = item.CheckinFields.Date;
-
                 if (item.GetWeight != null)
                 {
-                    _logger.LogInformation("Getting weight data..."); // TODO
+                    var weightData = await _healthTrackingService.GetWeightData(item.CheckinFields.Date);
+                    if (weightData.Weight.Any())
+                    {
+                        item.FormResponse["BMI"] = weightData.Weight[0].Bmi.ToString();
+                        item.FormResponse["Body fat %"] = weightData.Weight[0].Fat.ToString();
+                        item.FormResponse["Weight (lbs)"] = weightData.Weight[0].Lbs.ToString();
+                    }
                 }
 
-                if (item.FormResponse.Any(x => _lists.TrackedActivities.Contains(x.Key)))
+                if (activityData != null && item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key)))
                 {
-                    _logger.LogInformation("Getting Strava activity data..."); // TODO
+                    var date = DateTime.Parse(item.CheckinFields.Date);
+
+                    foreach (var activity in _lists.TrackedActivities)
+                    {
+                        if (!activityData.Any(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date))
+                            continue;
+                        
+                        var activitySums = activityData
+                            .Where(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date)
+                            .Sum(a => a.Distance);
+                        
+                        _logger.LogDebug("Sum for {activity}: {sum}", activity, activitySums);
+                        item.FormResponse[activity] = activitySums.ToString();
+                    }
                 }
 
                 try
                 {
                     var json = item.Serialize().Replace("\\u003C", "<");
-                    if (existingFiles.Contains(today))
+                    if (existingFiles.Contains(item.CheckinFields.Date))
                     {
                         _logger.LogInformation("Overwriting existing results file");
                     }
 
-                    await File.WriteAllTextAsync($"./data/results/{today}.json", json);
+                    await File.WriteAllTextAsync($"./data/results/{item.CheckinFields.Date}.json", json);
                 }
                 catch (Exception ex)
                 {
@@ -81,16 +113,16 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         }
 
         _logger.LogInformation(
-            "Processed {processedCount}, skipped {skippedCount} item(s) in {elapsed} ms",
+            "Processed {processedCount}, skipped {skippedCount} item(s) in {elapsed} ms: {@skippedItems}",
             results.Count,
             unprocessed.Count,
-            stopwatch.ElapsedMilliseconds);
-
+            stopwatch.ElapsedMilliseconds,
+            unprocessed);
         return new CheckinResponse(unprocessed, results);
     }
 }
 
 public interface ICheckinQueueProcessor
 {
-    Task<CheckinResponse> Process(CheckinRequest request);
+    Task<CheckinResponse> Process(List<CheckinItem> queue);
 }

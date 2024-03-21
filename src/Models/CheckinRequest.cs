@@ -4,10 +4,10 @@ namespace CheckinApi.Models;
 
 public class CheckinRequest
 {
-    public CheckinItem[] Queue { get; }
+    public List<CheckinItem> Queue { get; }
 
     [JsonConstructor]
-    public CheckinRequest(CheckinItem[] queue)
+    public CheckinRequest(List<CheckinItem> queue)
     {
         Queue = queue;
     }

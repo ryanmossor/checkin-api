@@ -47,13 +47,13 @@ public class CheckinController : ControllerBase
                 }
             }
 
-            var result = await _processor.Process(new CheckinRequest(queue.ToArray()));
+            var result = await _processor.Process(queue);
             return new OkObjectResult(result);
         }
 
-        if (request != null)
+        if (request != null && request.Queue.Any())
         {
-            var result = await _processor.Process(request);
+            var result = await _processor.Process(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList());
             return new OkObjectResult(result);
         }
 
@@ -63,7 +63,7 @@ public class CheckinController : ControllerBase
     [HttpPost("single")] // test, remove
     public async Task<IActionResult> ProcessSingleCheckinItem([FromBody] CheckinItem item)
     {
-        var result = await _processor.Process(new CheckinRequest(new[] { item }));
+        var result = await _processor.Process(new List<CheckinItem> { item });
         return new OkObjectResult(result);
     }
     
