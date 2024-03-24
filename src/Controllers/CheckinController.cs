@@ -56,7 +56,7 @@ public class CheckinController : ControllerBase
             try
             {
                 var json = request.SerializeFlat().Replace("\\u003C", "<");
-                var filename = $"{DateTime.Now:yyyy-MM-dd_hh:mm:ss}.json";
+                var filename = $"{DateTime.Now:yyyy-MM-dd_HH:mm:ss}.json";
                 await System.IO.File.WriteAllTextAsync(Path.Combine(Constants.RequestsDir, filename), json);
             } 
             catch (Exception ex)
