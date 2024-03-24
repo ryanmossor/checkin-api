@@ -1,6 +1,6 @@
 namespace CheckinApi.Interfaces;
 
-public interface ITokenService
+public interface IAuthService
 {
     Task RefreshTokenAsync();
     bool IsTokenExpired();

@@ -37,22 +37,22 @@ builder.Services.AddSingleton(builder.Configuration.Get<CheckinSecrets>());
 
 builder.Services.AddSingleton<ICheckinLists, CheckinLists>();
 
-builder.Services.AddSingleton(_ => new StravaTokenService(
-    _.GetRequiredService<CheckinSecrets>(), new HttpClient(), _.GetRequiredService<ILogger<StravaTokenService>>()));
+builder.Services.AddSingleton(_ => new StravaAuthService(
+    _.GetRequiredService<CheckinSecrets>(), new HttpClient(), _.GetRequiredService<ILogger<StravaAuthService>>()));
 
 builder.Services.AddSingleton<IActivityService, StravaService>(_ => new StravaService(
     _.GetRequiredService<HttpClient>(),
     _.GetRequiredService<CheckinSecrets>(),
-    _.GetRequiredService<StravaTokenService>(),
+    _.GetRequiredService<StravaAuthService>(),
     _.GetRequiredService<ILogger<StravaService>>()));
 
-builder.Services.AddSingleton(_ => new FitbitTokenService(
-    _.GetRequiredService<CheckinSecrets>(), new HttpClient(), _.GetRequiredService<ILogger<FitbitTokenService>>()));
+builder.Services.AddSingleton(_ => new FitbitAuthService(
+    _.GetRequiredService<CheckinSecrets>(), new HttpClient(), _.GetRequiredService<ILogger<FitbitAuthService>>()));
 
 builder.Services.AddSingleton<IHealthTrackingService, FitbitService>(_ => new FitbitService(
     _.GetRequiredService<HttpClient>(),
     _.GetRequiredService<CheckinSecrets>(),
-    _.GetRequiredService<FitbitTokenService>(),
+    _.GetRequiredService<FitbitAuthService>(),
     _.GetRequiredService<ILogger<FitbitService>>()));
 
 builder.Services.AddSingleton<ICheckinQueueProcessor, CheckinQueueProcessor>();

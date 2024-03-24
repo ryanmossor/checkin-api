@@ -13,21 +13,21 @@ public class StravaService : IActivityService
 
     private readonly HttpClient _httpClient;
     private readonly CheckinSecrets _secrets;
-    private readonly ITokenService _tokenService;
+    private readonly IAuthService _authService;
     private readonly ILogger<StravaService> _logger;
 
-    public StravaService(HttpClient httpClient, CheckinSecrets secrets, ITokenService tokenService, ILogger<StravaService> logger)
+    public StravaService(HttpClient httpClient, CheckinSecrets secrets, IAuthService authService, ILogger<StravaService> logger)
     {
         _httpClient = httpClient;
         _secrets = secrets;
-        _tokenService = tokenService;
+        _authService = authService;
         _logger = logger;
     }
 
     public async Task<StravaActivity[]?> GetActivityDataAsync(List<CheckinItem> queue)
     {
-        if (_tokenService.IsTokenExpired())
-            await _tokenService.RefreshTokenAsync();
+        if (_authService.IsTokenExpired())
+            await _authService.RefreshTokenAsync();
         
         var firstQueueItemDate = DateTimeOffset.Parse(queue.First().CheckinFields.Date);
         var lastQueueItemDate = DateTimeOffset.Parse(queue.Last().CheckinFields.Date).AddDays(1).AddSeconds(-1);

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace CheckinApi.Config;
 
-public class StravaTokenInfo
+public class StravaAuthInfo
 {
     public string token_type { get; }
     public string access_token { get; }
@@ -11,7 +11,7 @@ public class StravaTokenInfo
     public string refresh_token { get; }
     
     [JsonConstructor]
-    public StravaTokenInfo(string token_type, string access_token, long expires_at, int expires_in, string refresh_token)
+    public StravaAuthInfo(string token_type, string access_token, long expires_at, int expires_in, string refresh_token)
     {
         this.token_type = token_type;
         this.access_token = access_token;

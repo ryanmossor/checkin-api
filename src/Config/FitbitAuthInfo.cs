@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace CheckinApi.Config;
 
-public class FitbitTokenInfo
+public class FitbitAuthInfo
 {
     public string access_token { get; private set; }
     public int expires_in { get; private set; }
@@ -12,7 +12,7 @@ public class FitbitTokenInfo
     public string user_id { get; private set; }
 
     [JsonConstructor]
-    public FitbitTokenInfo(string access_token, int expires_in, string refresh_token, string scope, string token_type, string user_id)
+    public FitbitAuthInfo(string access_token, int expires_in, string refresh_token, string scope, string token_type, string user_id)
     {
         this.access_token = access_token;
         this.expires_in = expires_in;

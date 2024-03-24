@@ -13,14 +13,14 @@ public class FitbitService : IHealthTrackingService
 
     private readonly HttpClient _httpClient;
     private readonly CheckinSecrets _secrets;
-    private readonly ITokenService _tokenService;
+    private readonly IAuthService _authService;
     private readonly ILogger<FitbitService> _logger;
 
-    public FitbitService(HttpClient httpClient, CheckinSecrets secrets, ITokenService tokenService, ILogger<FitbitService> logger)
+    public FitbitService(HttpClient httpClient, CheckinSecrets secrets, IAuthService authService, ILogger<FitbitService> logger)
     {
         _httpClient = httpClient;
         _secrets = secrets;
-        _tokenService = tokenService;
+        _authService = authService;
         _logger = logger;
     }
 
@@ -28,8 +28,8 @@ public class FitbitService : IHealthTrackingService
     {
         using (_logger.BeginScope("Getting weight data for {date}", date))
         {
-            if (_tokenService.IsTokenExpired())
-                await _tokenService.RefreshTokenAsync();
+            if (_authService.IsTokenExpired())
+                await _authService.RefreshTokenAsync();
             
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));

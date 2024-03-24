@@ -8,15 +8,15 @@ using CheckinApi.Models;
 
 namespace CheckinApi.Services;
 
-public class FitbitTokenService : ITokenService
+public class FitbitAuthService : IAuthService
 {
     private const string BaseApiUrl = "https://api.fitbit.com/oauth2/token";
 
     private readonly CheckinSecrets _secrets;
     private readonly HttpClient _httpClient;
-    private readonly ILogger<FitbitTokenService> _logger;
+    private readonly ILogger<FitbitAuthService> _logger;
     
-    public FitbitTokenService(CheckinSecrets secrets, HttpClient httpClient, ILogger<FitbitTokenService> logger)
+    public FitbitAuthService(CheckinSecrets secrets, HttpClient httpClient, ILogger<FitbitAuthService> logger)
     {
         _secrets = secrets;
         _httpClient = httpClient;
@@ -50,7 +50,7 @@ public class FitbitTokenService : ITokenService
             }
         
             var json = await res.Content.ReadAsStringAsync();
-            var refreshedAuth = json.Deserialize<FitbitTokenInfo>();
+            var refreshedAuth = json.Deserialize<FitbitAuthInfo>();
             
             _secrets.Fitbit.UpdateAuth(refreshedAuth);
             await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.Serialize());

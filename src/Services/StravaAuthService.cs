@@ -5,15 +5,15 @@ using CheckinApi.Models;
 
 namespace CheckinApi.Services;
 
-public class StravaTokenService : ITokenService
+public class StravaAuthService : IAuthService
 {
     private const string BaseApiUrl = "https://www.strava.com/oauth/token";
 
     private readonly CheckinSecrets _secrets;
     private readonly HttpClient _httpClient;
-    private readonly ILogger<StravaTokenService> _logger;
+    private readonly ILogger<StravaAuthService> _logger;
     
-    public StravaTokenService(CheckinSecrets secrets, HttpClient httpClient, ILogger<StravaTokenService> logger)
+    public StravaAuthService(CheckinSecrets secrets, HttpClient httpClient, ILogger<StravaAuthService> logger)
     {
         _secrets = secrets;
         _httpClient = httpClient;
@@ -39,7 +39,7 @@ public class StravaTokenService : ITokenService
             }
         
             var json = await res.Content.ReadAsStringAsync();
-            var refreshedAuth = json.Deserialize<StravaTokenInfo>();
+            var refreshedAuth = json.Deserialize<StravaAuthInfo>();
             
             _secrets.Strava.UpdateAuth(refreshedAuth);
             await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.Serialize());
