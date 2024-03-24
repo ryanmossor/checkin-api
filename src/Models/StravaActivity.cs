@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CheckinApi.Models.Strava;
+namespace CheckinApi.Models;
 
 public class StravaActivity
 {

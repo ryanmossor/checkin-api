@@ -2,11 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace CheckinApi.Models;
 
-public class WeightData
-{
-    public Weight[] Weight { get; set; }
-}
-
 public class Weight
 {
     [JsonPropertyName("bmi")]

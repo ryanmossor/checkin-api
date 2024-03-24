@@ -16,4 +16,10 @@ public static class JsonExtensions
     public static T Deserialize<T>(this string json) => JsonSerializer.Deserialize<T>(json, DefaultSerializerSettings);
 
     public static string Serialize<T>(this T obj) => JsonSerializer.Serialize(obj, DefaultSerializerSettings);
+
+    public static string SerializeFlat<T>(this T obj) => JsonSerializer.Serialize(obj, new JsonSerializerOptions()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin),
+    });
 }

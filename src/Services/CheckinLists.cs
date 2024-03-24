@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using CheckinApi.Extensions;
+using CheckinApi.Interfaces;
+using Constants = CheckinApi.Models.Constants;
 
 namespace CheckinApi.Services;
 
@@ -17,7 +19,7 @@ public class CheckinLists : ICheckinLists
         
         try 
         {
-            var listsJson = File.ReadAllText("./data/lists.json");
+            var listsJson = File.ReadAllText(Constants.ListsFile);
             var lists = listsJson.Deserialize<CheckinLists>();
             
             _logger.LogTrace("Initializing check-in lists: {lists}", listsJson);
@@ -37,20 +39,18 @@ public class CheckinLists : ICheckinLists
         TrackedActivities = trackedActivities;
     }
 
-    public CheckinLists GetLists() => this;
-    
-    public async Task<CheckinLists> UpdateLists(List<string> fullChecklist, List<string> trackedActivities)
+    public async Task<CheckinLists> UpdateListsAsync(CheckinLists request)
     {
         lock (_lock)
         {
-            FullChecklist = fullChecklist;
-            TrackedActivities = trackedActivities;
+            FullChecklist = request.FullChecklist ?? FullChecklist;
+            TrackedActivities = request.TrackedActivities ?? TrackedActivities;
         }
 
         try
         {
-            var json = this.Serialize().Replace("\\u003C", "<");
-            await File.WriteAllTextAsync("./data/lists.json", json);
+            var json = this.SerializeFlat().Replace("\\u003C", "<");
+            await File.WriteAllTextAsync(Constants.ListsFile, json);
         }
         catch (Exception ex)
         {
@@ -59,13 +59,4 @@ public class CheckinLists : ICheckinLists
 
         return this;
     }
-}
-
-public interface ICheckinLists
-{
-    List<string> FullChecklist { get; }
-    List<string> TrackedActivities { get; }
-
-    CheckinLists GetLists();
-    Task<CheckinLists> UpdateLists(List<string> fullChecklist, List<string> trackedActivities);
 }

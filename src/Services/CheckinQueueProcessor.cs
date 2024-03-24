@@ -1,7 +1,8 @@
 using System.Diagnostics;
+using System.Text;
 using CheckinApi.Extensions;
+using CheckinApi.Interfaces;
 using CheckinApi.Models;
-using CheckinApi.Models.Strava;
 
 namespace CheckinApi.Services;
 
@@ -24,18 +25,17 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         _logger = logger;
     }
 
-    public async Task<CheckinResponse> Process(List<CheckinItem> queue)
+    public async Task<CheckinResponse> ProcessAsync(List<CheckinItem> queue)
     {
         var stopwatch = Stopwatch.StartNew();
         var unprocessed = new List<CheckinItem>();
         var results = new List<CheckinResult>();
 
-        var existingFiles = Directory.GetFiles("./data/results").Select(Path.GetFileNameWithoutExtension).ToList();
-
         StravaActivity[]? activityData = null;
         if (queue.Any(queueItem => queueItem.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key))))
         {
-            activityData = await _activityService.GetActivityData(queue);
+            var res = await _activityService.GetActivityDataAsync(queue);
+            activityData = res;
         }
 
         foreach (var item in queue)
@@ -49,65 +49,36 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                     continue;
                 }
 
-                if (item.SleepStart.HasValue && item.SleepEnd.HasValue)
-                {
-                    var totalTime = TimeSpan.FromSeconds(item.SleepEnd.Value - item.SleepStart.Value).ToString(@"h\:mm");
-                    item.FormResponse["Total Time in Bed"] = totalTime;
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Missing sleep start and/or end time: {sleepStart}, {sleepEnd}", item.SleepStart, item.SleepEnd); 
-                }
+                var updatedItem = UpdateTimeInBed(item);
 
-                if (item.GetWeight != null)
-                {
-                    var weightData = await _healthTrackingService.GetWeightData(item.CheckinFields.Date);
-                    if (weightData.Weight.Any())
-                    {
-                        item.FormResponse["BMI"] = weightData.Weight[0].Bmi.ToString();
-                        item.FormResponse["Body fat %"] = weightData.Weight[0].Fat.ToString();
-                        item.FormResponse["Weight (lbs)"] = weightData.Weight[0].Lbs.ToString();
-                    }
-                }
+                if (updatedItem.GetWeight != null)
+                    updatedItem = await UpdateWeightDataAsync(updatedItem);
 
-                if (activityData != null && item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key)))
+                (updatedItem, var skipCurrentItem) = ProcessActivityData(updatedItem, activityData);
+                if (skipCurrentItem)
                 {
-                    var date = DateTime.Parse(item.CheckinFields.Date);
-
-                    foreach (var activity in _lists.TrackedActivities)
-                    {
-                        if (!activityData.Any(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date))
-                            continue;
-                        
-                        var activitySums = activityData
-                            .Where(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date)
-                            .Sum(a => a.Distance);
-                        
-                        _logger.LogDebug("Sum for {activity}: {sum}", activity, activitySums);
-                        item.FormResponse[activity] = activitySums.ToString();
-                    }
+                    _logger.LogError(
+                        "Error retrieving activity data with tracked activities in form response. Skipping {@item}",
+                        updatedItem);
+                
+                    unprocessed.Add(updatedItem);
+                    continue;
                 }
 
                 try
                 {
-                    var json = item.Serialize().Replace("\\u003C", "<");
-                    if (existingFiles.Contains(item.CheckinFields.Date))
-                    {
-                        _logger.LogInformation("Overwriting existing results file");
-                    }
-
-                    await File.WriteAllTextAsync($"./data/results/{item.CheckinFields.Date}.json", json);
+                    var json = updatedItem.SerializeFlat().Replace("\\u003C", "<");
+                    await File.WriteAllTextAsync(
+                        Path.Combine(Constants.ResultsDir, $"{updatedItem.CheckinFields.Date}.json"),
+                        json);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error writing check-in results to file");
                 }
 
-                var resultsArr = _lists.FullChecklist.Select(x => item.FormResponse.GetValueOrDefault(x));
-                var resultsString = string.Join(",", resultsArr);
-
-                results.Add(new CheckinResult(item.CheckinFields, resultsString));
+                var resultsString = string.Join(",", _lists.FullChecklist.Select(x => updatedItem.FormResponse.GetValueOrDefault(x)));
+                results.Add(new CheckinResult(updatedItem.CheckinFields, resultsString));
                 _logger.LogDebug("Results string: {resultsString}", resultsString);
             }
         }
@@ -120,9 +91,60 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             unprocessed);
         return new CheckinResponse(unprocessed, results);
     }
-}
 
-public interface ICheckinQueueProcessor
-{
-    Task<CheckinResponse> Process(List<CheckinItem> queue);
+    private (CheckinItem, bool skipCurrentItem) ProcessActivityData(CheckinItem item, StravaActivity[]? activityData)
+    {
+        var itemContainsTrackedActivities = item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key));
+        
+        if (!itemContainsTrackedActivities) 
+            return (item, skipCurrentItem: false);
+        
+        if (activityData == null)
+            return (item, skipCurrentItem: true);
+
+        var date = DateTime.Parse(item.CheckinFields.Date);
+        foreach (var activity in _lists.TrackedActivities)
+        {
+            if (!activityData.Any(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date))
+                continue;
+                                
+            var activitySums = activityData
+                .Where(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date)
+                .Sum(a => a.Distance);
+                                
+            _logger.LogDebug("Sum for {activity}: {sum}", activity, activitySums);
+            item.FormResponse[activity] = activitySums.ToString();
+        }
+
+        return (item, skipCurrentItem: false);
+    }
+
+    private async Task<CheckinItem> UpdateWeightDataAsync(CheckinItem item)
+    {
+        var weightData = await _healthTrackingService.GetWeightDataAsync(item.CheckinFields.Date);
+        if (weightData == null || !weightData.Weight.Any()) 
+            return item;
+        
+        item.FormResponse["BMI"] = weightData.Weight[0].Bmi.ToString();
+        item.FormResponse["Body fat %"] = weightData.Weight[0].Fat.ToString();
+        item.FormResponse["Weight (lbs)"] = weightData.Weight[0].Lbs.ToString();
+
+        return item;
+    }
+
+    private CheckinItem UpdateTimeInBed(CheckinItem item)
+    {
+        if (item.SleepStart.HasValue && item.SleepEnd.HasValue)
+        {
+            var totalTime = TimeSpan.FromSeconds(item.SleepEnd.Value - item.SleepStart.Value).ToString(@"h\:mm");
+            item.FormResponse["Total Time in Bed"] = totalTime;
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Missing sleep start and/or end time: {sleepStart}, {sleepEnd}", item.SleepStart, item.SleepEnd);
+        }
+
+        return item;
+    }
 }

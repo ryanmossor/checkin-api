@@ -1,4 +1,5 @@
 using CheckinApi.Extensions;
+using CheckinApi.Interfaces;
 using CheckinApi.Models;
 using CheckinApi.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +28,7 @@ public class CheckinController : ControllerBase
     }
 
     [HttpPost("process")]
-    public async Task<IActionResult> ProcessCheckinQueue([FromBody] CheckinRequest? request, [FromQuery] string? dates)
+    public async Task<IActionResult> ProcessCheckinQueueAsync([FromBody] CheckinRequest? request, [FromQuery] string? dates)
     {
         if (dates != null)
         {
@@ -37,8 +38,7 @@ public class CheckinController : ControllerBase
             {
                 try
                 {
-                    var contents = await System.IO.File.ReadAllTextAsync($"./data/results/{date}.json");
-                    _logger.LogDebug("Adding results for {date} to queue", date);
+                    var contents = await System.IO.File.ReadAllTextAsync(Path.Combine(Constants.ResultsDir, $"{date}.json"));
                     queue.Add(contents.Deserialize<CheckinItem>());
                 }
                 catch (Exception ex)
@@ -47,13 +47,24 @@ public class CheckinController : ControllerBase
                 }
             }
 
-            var result = await _processor.Process(queue);
+            var result = await _processor.ProcessAsync(queue);
             return new OkObjectResult(result);
         }
 
         if (request != null && request.Queue.Any())
         {
-            var result = await _processor.Process(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList());
+            try
+            {
+                var json = request.SerializeFlat().Replace("\\u003C", "<");
+                var filename = $"{DateTime.Now:yyyy-MM-dd_hh:mm:ss}.json";
+                await System.IO.File.WriteAllTextAsync(Path.Combine(Constants.RequestsDir, filename), json);
+            } 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error writing request to file");
+            }
+            
+            var result = await _processor.ProcessAsync(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList());
             return new OkObjectResult(result);
         }
 
@@ -61,31 +72,28 @@ public class CheckinController : ControllerBase
     }
 
     [HttpPost("single")] // test, remove
-    public async Task<IActionResult> ProcessSingleCheckinItem([FromBody] CheckinItem item)
+    public async Task<IActionResult> ProcessSingleCheckinItemAsync([FromBody] CheckinItem item)
     {
-        var result = await _processor.Process(new List<CheckinItem> { item });
+        var result = await _processor.ProcessAsync(new List<CheckinItem> { item });
         return new OkObjectResult(result);
     }
-    
-    [HttpGet("lists")]
-    public IActionResult GetCheckinLists()
-    {
-        return new OkObjectResult(_lists.GetLists());
-    }
 
-    [HttpPost("lists")]
-    public async Task<IActionResult> UpdateCheckinLists([FromBody] CheckinLists lists)
+    [HttpGet("lists")]
+    public IActionResult GetCheckinLists() => new OkObjectResult(_lists);
+
+    [HttpPatch("lists")]
+    public async Task<IActionResult> UpdateCheckinListsAsync([FromBody] CheckinLists lists)
     {
-        var result = await _lists.UpdateLists(lists.FullChecklist, lists.TrackedActivities);
+        var result = await _lists.UpdateListsAsync(lists);
         return new OkObjectResult(result);
     }
 
     [HttpGet("date/{date}")]
-    public async Task<IActionResult> GetCheckinItemByDate([FromRoute] string date)
+    public async Task<IActionResult> GetCheckinItemByDateAsync([FromRoute] string date)
     {
         try
         {
-            var item = await System.IO.File.ReadAllTextAsync($"./data/results/{date}.json");
+            var item = await System.IO.File.ReadAllTextAsync(Path.Combine(Constants.ResultsDir, $"{date}.json"));
             return new OkObjectResult(item.Deserialize<CheckinItem>());
         }
         catch (Exception ex)
@@ -100,7 +108,7 @@ public class CheckinController : ControllerBase
     {
         try
         {
-            var files = Directory.GetFiles("./data/results")
+            var files = Directory.GetFiles(Constants.ResultsDir)
                 .Select(Path.GetFileNameWithoutExtension)
                 .Where(filename => filename!.StartsWith($"{year}-{month}"));
 
