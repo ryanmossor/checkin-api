@@ -84,6 +84,7 @@ public class CheckinController : ControllerBase
     [HttpPatch("lists")]
     public async Task<IActionResult> UpdateCheckinListsAsync([FromBody] CheckinLists lists)
     {
+        _logger.LogDebug("Updating check-in lists: {@lists}", lists);
         var result = await _lists.UpdateListsAsync(lists);
         return new OkObjectResult(result);
     }
