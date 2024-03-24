@@ -89,7 +89,8 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             unprocessed.Count,
             stopwatch.ElapsedMilliseconds,
             unprocessed);
-        return new CheckinResponse(unprocessed, results);
+
+        return new CheckinResponse(unprocessed, ConcatenateResults(results));
     }
 
     private (CheckinItem, bool skipCurrentItem) ProcessActivityData(CheckinItem item, StravaActivity[]? activityData)
@@ -146,5 +147,43 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         }
 
         return item;
+    }
+
+    private List<CheckinResult> ConcatenateResults(List<CheckinResult> checkinResults)
+    {
+        const string columnDelimiter = "=:=";
+        
+        var resultsByMonth = checkinResults.GroupBy(r => r.Month).ToList();
+        
+        var concatenatedResults = new List<CheckinResult>();
+        foreach (var resultGroup in resultsByMonth)
+        {
+            var dates = resultGroup.Select(r => DateTime.Parse(r.Date)).ToList();
+            var startDate = dates.Min();
+            var endDate = dates.Max();
+
+            var sb = new StringBuilder();
+            for (var date = startDate; date <= endDate; date = date.AddDays(1))
+            {
+                if (sb.Length > 0)
+                    sb.Append(columnDelimiter);
+
+                sb.Append(date.Day);
+                
+                var matchingResult = resultGroup.FirstOrDefault(r => r.Date == date.ToString("yyyy-MM-dd"));
+                if (matchingResult != null)
+                    sb.Append($",{matchingResult.ResultsString}");
+            }
+
+            var firstRes = resultGroup.First();
+            var result = new CheckinResult(
+                new CheckinFields(firstRes.SpreadsheetName, firstRes.Date, firstRes.Month, firstRes.CellReference),
+                resultsString: sb.ToString());
+            
+            _logger.LogDebug("Concatenated results for month {month}: {@res}", firstRes.Month, result);
+            concatenatedResults.Add(result);
+        }
+
+        return concatenatedResults;
     }
 }
