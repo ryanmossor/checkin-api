@@ -10,8 +10,8 @@ public class CheckinLists : ICheckinLists
     private readonly object _lock = new();
     private readonly ILogger<CheckinLists> _logger;
 
-    public List<string> FullChecklist { get; private set; }
-    public List<string> TrackedActivities { get; private set; }
+    public List<string>? FullChecklist { get; private set; }
+    public List<string>? TrackedActivities { get; private set; }
     
     public CheckinLists(ILogger<CheckinLists> logger)
     {
