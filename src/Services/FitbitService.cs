@@ -1,51 +1,54 @@
 using System.Net.Http.Headers;
 using System.Net.Mime;
-using System.Text;
+using CheckinApi.Config;
 using CheckinApi.Extensions;
+using CheckinApi.Interfaces;
 using CheckinApi.Models;
 
 namespace CheckinApi.Services;
 
 public class FitbitService : IHealthTrackingService
 {
+    private const string BaseApiUrl = "https://api.fitbit.com";
+
     private readonly HttpClient _httpClient;
+    private readonly CheckinSecrets _secrets;
+    private readonly ITokenService _tokenService;
     private readonly ILogger<FitbitService> _logger;
 
-    private const string BaseApiUrl = "https://api.fitbit.com/1/user/-/body/log/weight/date";
-
-    public FitbitService(HttpClient httpClient, ILogger<FitbitService> logger)
+    public FitbitService(HttpClient httpClient, CheckinSecrets secrets, ITokenService tokenService, ILogger<FitbitService> logger)
     {
         _httpClient = httpClient;
+        _secrets = secrets;
+        _tokenService = tokenService;
         _logger = logger;
     }
 
-    public async Task<WeightData?> GetWeightData(string date)
+    public async Task<WeightData?> GetWeightDataAsync(string date)
     {
-        _logger.LogInformation("Getting weight data...");
-        
-        _httpClient.DefaultRequestHeaders.Accept.Clear();
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
-        // TODO: handle secrets
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "redacted");
-
-        var url = $"{BaseApiUrl}/{date}.json";
-        try
+        using (_logger.BeginScope("Getting weight data for {date}", date))
         {
-            var json = await _httpClient.GetStringAsync(url);
-            var data = json.Deserialize<WeightData>();
-            _logger.LogDebug("Retrieved Fitbit data for {date}: {@data}", date, data);
+            if (_tokenService.IsTokenExpired())
+                await _tokenService.RefreshTokenAsync();
             
-            return data;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving Fitbit data for {date}: {requestUrl}", date, url);
-            return null;
+            _httpClient.DefaultRequestHeaders.Accept.Clear();
+            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _secrets.Fitbit.auth.access_token);
+
+            var url = $"{BaseApiUrl}/1/user/-/body/log/weight/date/{date}.json";
+            try
+            {
+                var json = await _httpClient.GetStringAsync(url);
+                var data = json.Deserialize<WeightData>();
+                _logger.LogDebug("Retrieved weight data: {@data}", data);
+                
+                return data;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving weight data: {requestUrl}", url);
+                return null;
+            }
         }
     }
-}
-
-public interface IHealthTrackingService
-{
-    Task<WeightData?> GetWeightData(string date);
 }
