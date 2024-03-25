@@ -27,18 +27,19 @@ public class StravaAuthService : IAuthService
                   $"&refresh_token={_secrets.Strava.auth.refresh_token}" +
                   $"&grant_type=refresh_token";
         
-        HttpResponseMessage? res = null;
-        try 
+        HttpResponseMessage? response = null;
+        try
         {
-            res = await _httpClient.PostAsJsonAsync(url, string.Empty);
+            _logger.LogDebug("Refreshing Strava token...");
+            response = await _httpClient.PostAsJsonAsync(url, string.Empty);
 
-            if (!res.IsSuccessStatusCode) 
+            if (!response.IsSuccessStatusCode) 
             {
-                _logger.LogError("Unsuccessful Strava token refresh: {@res}", res.Content.ReadAsStringAsync().Result);
+                _logger.LogError("Unsuccessful Strava token refresh: {@res}", response.Content.ReadAsStringAsync().Result);
                 return;
             }
         
-            var json = await res.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync();
             var refreshedAuth = json.Deserialize<StravaAuthInfo>();
             
             _secrets.Strava.UpdateAuth(refreshedAuth);
@@ -46,7 +47,7 @@ public class StravaAuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error refreshing Strava config {requestUrl} {@res}", url, res);
+            _logger.LogError(ex, "Error refreshing Strava config {requestUrl} {@res}", url, response);
         }
     }
     

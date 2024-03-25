@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Net.Mime;
 using System.Text;
 using CheckinApi.Config;
 using CheckinApi.Extensions;
@@ -29,27 +30,27 @@ public class FitbitAuthService : IAuthService
         var basicTokenBase64 = Convert.ToBase64String(basicTokenAsBytes);
         
         var request = new HttpRequestMessage(HttpMethod.Post, BaseApiUrl);
-        _httpClient.DefaultRequestHeaders.Accept.Clear();
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/x-www-form-urlencoded"));
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basicTokenBase64);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/x-www-form-urlencoded"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicTokenBase64);
         
         request.Content = new StringContent(
             content: $"grant_type=refresh_token&refresh_token={_secrets.Fitbit.auth.refresh_token}",
             encoding: Encoding.UTF8,
-            mediaType: "application/x-www-form-urlencoded"); 
-            
-        HttpResponseMessage? res = null;
-        try 
-        {
-            res = await _httpClient.SendAsync(request);
+            mediaType: "application/x-www-form-urlencoded");
 
-            if (!res.IsSuccessStatusCode) 
+        HttpResponseMessage? response = null;
+        try
+        {
+            _logger.LogDebug("Refreshing Fitbit token...");
+            response = await _httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode) 
             {
-                _logger.LogError("Unsuccessful Fitbit token refresh: {@res}", res.Content.ReadAsStringAsync().Result);
+                _logger.LogError("Unsuccessful Fitbit token refresh: {@res}", response.Content.ReadAsStringAsync().Result);
                 return;
             }
         
-            var json = await res.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync();
             var refreshedAuth = json.Deserialize<FitbitAuthInfo>();
             
             _secrets.Fitbit.UpdateAuth(refreshedAuth);
@@ -57,7 +58,7 @@ public class FitbitAuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error refreshing Strava config {@res}", res);
+            _logger.LogError(ex, "Error refreshing Fitbit config {@res}", response);
         }
     }
 

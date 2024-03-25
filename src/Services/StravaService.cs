@@ -36,25 +36,35 @@ public class StravaService : IActivityService
             firstQueueItemDate.ToString("yyyy/MM/dd hh:mm:ss"),
             lastQueueItemDate.ToString("yyyy/MM/dd hh:mm:ss"))) 
         {
-            _httpClient.DefaultRequestHeaders.Accept.Clear();
-            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _secrets.Strava.auth.access_token); 
-            
             var before = lastQueueItemDate.ToUnixTimeSeconds();
             var after = firstQueueItemDate.ToUnixTimeSeconds();
             var url = $"{BaseApiUrl}/athlete/activities?before={before}&after={after}";
             
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                _secrets.Strava.auth.token_type,
+                _secrets.Strava.auth.access_token);
+
+            HttpResponseMessage? response = null;
             try 
             {
-                var json = await _httpClient.GetStringAsync(url);
-                var data = json.Deserialize<StravaActivity[]>();
+                response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Unsuccessful Strava API call: {@res}", response.Content.ReadAsStringAsync().Result);
+                    return null;
+                }
                 
+                var content = await response.Content.ReadAsStringAsync();
+                var data = content.Deserialize<StravaActivity[]>();
                 _logger.LogDebug("Retrieved Strava activities: {@data}", data.ToList());
+                
                 return data;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving Strava activities: {requestUrl}", url);
+                _logger.LogError(ex, "Error retrieving Strava activities: {requestUrl} {@res}", url, response);
                 return null;
             }
         }

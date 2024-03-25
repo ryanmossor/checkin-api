@@ -37,22 +37,33 @@ public class FitbitService : IHealthTrackingService
             if (_authService.IsTokenExpired())
                 await _authService.RefreshTokenAsync();
             
-            _httpClient.DefaultRequestHeaders.Accept.Clear();
-            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _secrets.Fitbit.auth.access_token);
-
             var url = $"{BaseApiUrl}/1/user/-/body/log/weight/date/{startDate}/{endDate}.json";
+            
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                _secrets.Fitbit.auth.token_type,
+                _secrets.Fitbit.auth.access_token);
+            
+            HttpResponseMessage? response = null;
             try
             {
-                var json = await _httpClient.GetStringAsync(url);
-                var data = json.Deserialize<WeightData>();
+                response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Unsuccessful Fitbit API call: {@res}", response.Content.ReadAsStringAsync().Result);
+                    return null;
+                }
+                
+                var content = await response.Content.ReadAsStringAsync();
+                var data = content.Deserialize<WeightData>();
                 _logger.LogDebug("Retrieved weight data: {@data}", data);
                 
                 return data.Weight;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving weight data: {requestUrl}", url);
+                _logger.LogError(ex, "Error retrieving weight data: {requestUrl} {@res}", url, response);
                 return null;
             }
         }
