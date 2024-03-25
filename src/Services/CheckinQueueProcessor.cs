@@ -65,11 +65,16 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         var unprocessed = new List<CheckinItem>();
         var results = new List<CheckinResult>();
 
+        Weight[]? weightData = null;
+        if (queue.Any(queueItem => queueItem.GetWeight == true))
+        {
+            weightData = await _healthTrackingService.GetWeightDataAsync(queue); 
+        }
+        
         StravaActivity[]? activityData = null;
         if (queue.Any(queueItem => queueItem.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key))))
         {
-            var res = await _activityService.GetActivityDataAsync(queue);
-            activityData = res;
+            activityData = await _activityService.GetActivityDataAsync(queue); 
         }
 
         foreach (var item in queue.OrderBy(x => x.CheckinFields.Date).ToList())
@@ -86,7 +91,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                 var updatedItem = UpdateTimeInBed(item);
 
                 if (updatedItem.GetWeight != null)
-                    updatedItem = await UpdateWeightDataAsync(updatedItem);
+                    updatedItem = UpdateWeightData(updatedItem, weightData);
 
                 (updatedItem, var skipCurrentItem) = ProcessActivityData(updatedItem, activityData);
                 if (skipCurrentItem)
@@ -154,15 +159,18 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         return (item, skipCurrentItem: false);
     }
 
-    private async Task<CheckinItem> UpdateWeightDataAsync(CheckinItem item)
+    private CheckinItem UpdateWeightData(CheckinItem item, Weight[]? weightData)
     {
-        var weightData = await _healthTrackingService.GetWeightDataAsync(item.CheckinFields.Date);
-        if (weightData == null || !weightData.Weight.Any()) 
+        var data = weightData?.FirstOrDefault(w => w.Date == item.CheckinFields.Date);
+        if (data == null)
+        {
+            _logger.LogWarning("Weight data not found for {date} with getWeight flag set", item.CheckinFields.Date);
             return item;
-        
-        item.FormResponse["BMI"] = weightData.Weight[0].Bmi.ToString();
-        item.FormResponse["Body fat %"] = weightData.Weight[0].Fat.ToString();
-        item.FormResponse["Weight (lbs)"] = weightData.Weight[0].Lbs.ToString();
+        }
+
+        item.FormResponse["BMI"] = data.Bmi.ToString();
+        item.FormResponse["Body fat %"] = data.Fat.ToString();
+        item.FormResponse["Weight (lbs)"] = data.Lbs.ToString();
 
         return item;
     }

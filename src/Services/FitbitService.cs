@@ -24,9 +24,15 @@ public class FitbitService : IHealthTrackingService
         _logger = logger;
     }
 
-    public async Task<WeightData?> GetWeightDataAsync(string date)
+    public async Task<Weight[]?> GetWeightDataAsync(List<CheckinItem> queue)
     {
-        using (_logger.BeginScope("Getting weight data for {date}", date))
+        if (_authService.IsTokenExpired())
+            await _authService.RefreshTokenAsync();
+        
+        var startDate = queue.First().CheckinFields.Date;
+        var endDate = queue.Last().CheckinFields.Date;
+        
+        using (_logger.BeginScope("Getting weight data from {start} to {end}", startDate, endDate)) 
         {
             if (_authService.IsTokenExpired())
                 await _authService.RefreshTokenAsync();
@@ -35,14 +41,14 @@ public class FitbitService : IHealthTrackingService
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _secrets.Fitbit.auth.access_token);
 
-            var url = $"{BaseApiUrl}/1/user/-/body/log/weight/date/{date}.json";
+            var url = $"{BaseApiUrl}/1/user/-/body/log/weight/date/{startDate}/{endDate}.json";
             try
             {
                 var json = await _httpClient.GetStringAsync(url);
                 var data = json.Deserialize<WeightData>();
                 _logger.LogDebug("Retrieved weight data: {@data}", data);
                 
-                return data;
+                return data.Weight;
             }
             catch (Exception ex)
             {

@@ -33,8 +33,8 @@ public class StravaService : IActivityService
         var lastQueueItemDate = DateTimeOffset.Parse(queue.Last().CheckinFields.Date).AddDays(1).AddSeconds(-1);
         
         using (_logger.BeginScope("Getting Strava activity data from {start} to {end}", 
-                firstQueueItemDate.ToString("yyyy/MM/dd hh:mm:ss"),
-                lastQueueItemDate.ToString("yyyy/MM/dd hh:mm:ss"))) 
+            firstQueueItemDate.ToString("yyyy/MM/dd hh:mm:ss"),
+            lastQueueItemDate.ToString("yyyy/MM/dd hh:mm:ss"))) 
         {
             _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
