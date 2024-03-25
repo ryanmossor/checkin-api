@@ -49,7 +49,7 @@ public class CheckinLists : ICheckinLists
 
         try
         {
-            var json = this.SerializeFlat().Replace("\\u003C", "<");
+            var json = this.Serialize();
             await File.WriteAllTextAsync(Constants.ListsFile, json);
         }
         catch (Exception ex)

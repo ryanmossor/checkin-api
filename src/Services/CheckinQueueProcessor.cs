@@ -101,7 +101,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
                 try
                 {
-                    var json = updatedItem.SerializeFlat().Replace("\\u003C", "<");
+                    var json = updatedItem.Serialize();
                     await File.WriteAllTextAsync(
                         Path.Combine(Constants.ResultsDir, $"{updatedItem.CheckinFields.Date}.json"),
                         json);

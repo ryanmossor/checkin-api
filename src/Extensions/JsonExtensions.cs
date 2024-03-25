@@ -1,6 +1,5 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Unicode;
 
 namespace CheckinApi.Extensions;
 
@@ -9,17 +8,19 @@ public static class JsonExtensions
     private static readonly JsonSerializerOptions DefaultSerializerSettings = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin),
-        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
     public static T Deserialize<T>(this string json) => JsonSerializer.Deserialize<T>(json, DefaultSerializerSettings);
 
     public static string Serialize<T>(this T obj) => JsonSerializer.Serialize(obj, DefaultSerializerSettings);
 
-    public static string SerializeFlat<T>(this T obj) => JsonSerializer.Serialize(obj, new JsonSerializerOptions()
+    public static string SerializePretty<T>(this T obj)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin),
-    });
+        var opts = new JsonSerializerOptions(DefaultSerializerSettings)
+        {
+            WriteIndented = true,
+        };
+        return JsonSerializer.Serialize(obj, opts);
+    }
 }

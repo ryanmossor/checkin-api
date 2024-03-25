@@ -42,7 +42,7 @@ public class StravaAuthService : IAuthService
             var refreshedAuth = json.Deserialize<StravaAuthInfo>();
             
             _secrets.Strava.UpdateAuth(refreshedAuth);
-            await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.Serialize());
+            await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.SerializePretty());
         }
         catch (Exception ex)
         {

@@ -53,7 +53,7 @@ public class FitbitAuthService : IAuthService
             var refreshedAuth = json.Deserialize<FitbitAuthInfo>();
             
             _secrets.Fitbit.UpdateAuth(refreshedAuth);
-            await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.Serialize());
+            await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.SerializePretty());
         }
         catch (Exception ex)
         {
