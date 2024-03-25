@@ -24,8 +24,42 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         _healthTrackingService = healthTrackingService;
         _logger = logger;
     }
+    
+    public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates) 
+    {
+        var files = Directory.GetFiles(Constants.ResultsDir).Select(Path.GetFileNameWithoutExtension);
+        var missingResults = dates.Split(',').Where(f => !files.Contains(f)).ToList();
+        
+        if (missingResults.Any()) 
+        {
+            _logger.LogError("Error retrieving data for {@missingResults}", missingResults);
+        }
 
-    public async Task<CheckinResponse> ProcessAsync(List<CheckinItem> queue)
+        var validDates = dates.Split(',').Order().Where(d => !missingResults.Contains(d));
+        _logger.LogDebug("Dates to process: {@dates}", validDates);
+        
+        var results = new List<CheckinResult>();
+        foreach (var date in validDates)
+        {
+            try
+            {
+                var contents = await File.ReadAllTextAsync(Path.Combine(Constants.ResultsDir, $"{date}.json"));
+                var item = contents.Deserialize<CheckinItem>();
+                
+                var resultsString = string.Join(",", _lists.FullChecklist.Select(x => item.FormResponse.GetValueOrDefault(x)));
+                results.Add(new CheckinResult(item.CheckinFields, resultsString));
+                _logger.LogDebug("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving data for {date}", date);
+            }
+        }
+
+        return new CheckinResponse(ConcatenateResults(results));
+    }
+
+    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue)
     {
         var stopwatch = Stopwatch.StartNew();
         var unprocessed = new List<CheckinItem>();
@@ -38,7 +72,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             activityData = res;
         }
 
-        foreach (var item in queue)
+        foreach (var item in queue.OrderBy(x => x.CheckinFields.Date).ToList())
         {
             using (_logger.BeginScope("Processing check-in item for {date}", item.CheckinFields.Date))
             {
@@ -90,7 +124,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             stopwatch.ElapsedMilliseconds,
             unprocessed);
 
-        return new CheckinResponse(unprocessed, ConcatenateResults(results));
+        return new CheckinResponse(ConcatenateResults(results), unprocessed);
     }
 
     private (CheckinItem, bool skipCurrentItem) ProcessActivityData(CheckinItem item, StravaActivity[]? activityData)
@@ -151,8 +185,8 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
     private List<CheckinResult> ConcatenateResults(List<CheckinResult> checkinResults)
     {
-        const string columnDelimiter = "=:=";
-        
+        const char columnDelimiter = '|';
+
         var resultsByMonth = checkinResults.GroupBy(r => r.Month).ToList();
         
         var concatenatedResults = new List<CheckinResult>();

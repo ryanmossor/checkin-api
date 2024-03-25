@@ -26,55 +26,39 @@ public class CheckinController : ControllerBase
     {
         return "Hello world\n";
     }
+    
+    [HttpGet("process")]
+    public async Task<IActionResult> ProcessCheckinDatesAsync([FromQuery] string dates) 
+    {
+        var result = await _processor.ProcessSavedResultsAsync(dates);
+        return new OkObjectResult(result);
+    }
 
     [HttpPost("process")]
-    public async Task<IActionResult> ProcessCheckinQueueAsync([FromBody] CheckinRequest? request, [FromQuery] string? dates)
+    public async Task<IActionResult> ProcessCheckinQueueAsync([FromBody] CheckinRequest request)
     {
-        if (dates != null)
+        if (!request.Queue.Any())
+            return new BadRequestObjectResult("No items in check-in queue");
+        
+        try
         {
-            _logger.LogDebug("Dates to process: {dates}", dates);
-            var queue = new List<CheckinItem>();
-            foreach (var date in dates.Split(',').Order())
-            {
-                try
-                {
-                    var contents = await System.IO.File.ReadAllTextAsync(Path.Combine(Constants.ResultsDir, $"{date}.json"));
-                    queue.Add(contents.Deserialize<CheckinItem>());
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error retrieving data for {date}", date);
-                }
-            }
-
-            var result = await _processor.ProcessAsync(queue);
-            return new OkObjectResult(result);
+            var json = request.SerializeFlat().Replace("\\u003C", "<");
+            var filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
+            await System.IO.File.WriteAllTextAsync(Path.Combine(Constants.RequestsDir, filename), json);
+        } 
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error writing request to file");
         }
-
-        if (request != null && request.Queue.Any())
-        {
-            try
-            {
-                var json = request.SerializeFlat().Replace("\\u003C", "<");
-                var filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
-                await System.IO.File.WriteAllTextAsync(Path.Combine(Constants.RequestsDir, filename), json);
-            } 
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error writing request to file");
-            }
             
-            var result = await _processor.ProcessAsync(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList());
-            return new OkObjectResult(result);
-        }
-
-        return new BadRequestResult();
+        var result = await _processor.ProcessQueueAsync(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList());
+        return new OkObjectResult(result);
     }
 
     [HttpPost("single")] // test, remove
     public async Task<IActionResult> ProcessSingleCheckinItemAsync([FromBody] CheckinItem item)
     {
-        var result = await _processor.ProcessAsync(new List<CheckinItem> { item });
+        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item });
         return new OkObjectResult(result);
     }
 

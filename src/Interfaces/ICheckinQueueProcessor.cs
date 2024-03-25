@@ -4,5 +4,6 @@ namespace CheckinApi.Interfaces;
 
 public interface ICheckinQueueProcessor
 {
-    Task<CheckinResponse> ProcessAsync(List<CheckinItem> queue);
+    Task<CheckinResponse> ProcessSavedResultsAsync(string dates);
+    Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue);
 }

@@ -4,15 +4,15 @@ namespace CheckinApi.Models;
 
 public class CheckinResponse
 {
-    public List<CheckinItem> Unprocessed { get; set; }
     public List<CheckinResult> Results { get; set; }
     public int ProcessedCount { get; set; }
+    public List<CheckinItem> Unprocessed { get; set; }
 
     [JsonConstructor]
-    public CheckinResponse(List<CheckinItem> unprocessed, List<CheckinResult> results)
+    public CheckinResponse(List<CheckinResult> results, List<CheckinItem>? unprocessed = null)
     {
-        Unprocessed = unprocessed;
         Results = results;
         ProcessedCount = results.Count;
+        Unprocessed = unprocessed ?? new List<CheckinItem>();
     }
 }
