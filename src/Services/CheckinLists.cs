@@ -22,7 +22,7 @@ public class CheckinLists : ICheckinLists
             var listsJson = File.ReadAllText(Constants.ListsFile);
             var lists = listsJson.Deserialize<CheckinLists>();
             
-            _logger.LogTrace("Initializing check-in lists: {lists}", listsJson);
+            _logger.LogDebug("Initializing check-in lists: {lists}", listsJson);
             FullChecklist = lists.FullChecklist;
             TrackedActivities = lists.TrackedActivities;
         }
