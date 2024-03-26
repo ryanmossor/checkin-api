@@ -104,6 +104,13 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                     _logger.LogError(ex, "Error writing check-in results to file");
                 }
 
+                if (item.FormResponse.Keys.Any(x => !_lists.FullChecklist.Contains(x)))
+                {
+                    _logger.LogInformation(
+                        "Items in queue that aren't in full checklist: {@items}",
+                        item.FormResponse.Keys.Where(x => !_lists.FullChecklist.Contains(x)));
+                }
+                
                 var resultsString = string.Join(",", _lists.FullChecklist.Select(x => updatedItem.FormResponse.GetValueOrDefault(x)));
                 results.Add(new CheckinResult(updatedItem.CheckinFields, resultsString));
                 _logger.LogInformation("Results string: {resultsString}", resultsString);
