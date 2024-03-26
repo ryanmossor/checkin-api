@@ -6,8 +6,8 @@ public class CheckinItem
 {
     public CheckinFields CheckinFields { get; }
     public Dictionary<string, string> FormResponse { get; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public bool? GetWeight { get; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool GetWeight { get; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public long? SleepStart { get; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -17,7 +17,7 @@ public class CheckinItem
     public CheckinItem(
         CheckinFields checkinFields,
         Dictionary<string, string> formResponse,
-        bool? getWeight,
+        bool getWeight,
         long? sleepStart,
         long? sleepEnd)
     {

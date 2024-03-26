@@ -2,5 +2,5 @@ namespace CheckinApi.Models;
 
 public class WeightData
 {
-    public Weight[] Weight { get; set; }
+    public List<Weight> Weight { get; set; }
 }

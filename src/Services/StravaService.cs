@@ -24,7 +24,7 @@ public class StravaService : IActivityService
         _logger = logger;
     }
 
-    public async Task<StravaActivity[]?> GetActivityDataAsync(List<CheckinItem> queue)
+    public async Task<List<StravaActivity>> GetActivityDataAsync(List<CheckinItem> queue)
     {
         if (_authService.IsTokenExpired())
             await _authService.RefreshTokenAsync();
@@ -53,11 +53,11 @@ public class StravaService : IActivityService
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError("Unsuccessful Strava API call: {@res}", response.Content.ReadAsStringAsync().Result);
-                    return null;
+                    return new List<StravaActivity>();
                 }
                 
                 var content = await response.Content.ReadAsStringAsync();
-                var data = content.Deserialize<StravaActivity[]>();
+                var data = content.Deserialize<List<StravaActivity>>();
                 _logger.LogDebug("Retrieved Strava activities: {@data}", data.ToList());
                 
                 return data;
@@ -65,7 +65,7 @@ public class StravaService : IActivityService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving Strava activities: {requestUrl} {@res}", url, response);
-                return null;
+                return new List<StravaActivity>();
             }
         }
     }

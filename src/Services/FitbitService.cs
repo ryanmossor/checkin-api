@@ -24,7 +24,7 @@ public class FitbitService : IHealthTrackingService
         _logger = logger;
     }
 
-    public async Task<Weight[]?> GetWeightDataAsync(List<CheckinItem> queue)
+    public async Task<List<Weight>> GetWeightDataAsync(List<CheckinItem> queue)
     {
         if (_authService.IsTokenExpired())
             await _authService.RefreshTokenAsync();
@@ -52,7 +52,7 @@ public class FitbitService : IHealthTrackingService
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError("Unsuccessful Fitbit API call: {@res}", response.Content.ReadAsStringAsync().Result);
-                    return null;
+                    return new List<Weight>();
                 }
                 
                 var content = await response.Content.ReadAsStringAsync();
@@ -64,7 +64,7 @@ public class FitbitService : IHealthTrackingService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving weight data: {requestUrl} {@res}", url, response);
-                return null;
+                return new List<Weight>();
             }
         }
     }
