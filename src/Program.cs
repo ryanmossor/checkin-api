@@ -4,6 +4,7 @@ using CheckinApi.Models;
 using CheckinApi.Services;
 using Serilog;
 using Serilog.Events;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +74,9 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
     options.InjectStylesheet("/swagger-ui/SwaggerDark.css");
     options.RoutePrefix = string.Empty;
+    
+    if (!app.Environment.IsDevelopment()) 
+        options.SupportedSubmitMethods(SubmitMethod.Get); 
 });
 
 // commented out to access via local network since dev cert untrusted
