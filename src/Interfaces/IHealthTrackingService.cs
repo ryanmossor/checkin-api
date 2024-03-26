@@ -4,5 +4,5 @@ namespace CheckinApi.Interfaces;
 
 public interface IHealthTrackingService
 {
-    Task<Weight[]?> GetWeightDataAsync(List<CheckinItem> queue);
+    Task<List<Weight>> GetWeightDataAsync(List<CheckinItem> queue);
 }

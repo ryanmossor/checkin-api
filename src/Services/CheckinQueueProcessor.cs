@@ -65,13 +65,13 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         var unprocessed = new List<CheckinItem>();
         var results = new List<CheckinResult>();
 
-        Weight[]? weightData = null;
-        if (queue.Any(queueItem => queueItem.GetWeight == true))
+        var weightData = new List<Weight>();
+        if (queue.Any(queueItem => queueItem.GetWeight))
         {
             weightData = await _healthTrackingService.GetWeightDataAsync(queue); 
         }
-        
-        StravaActivity[]? activityData = null;
+
+        var activityData = new List<StravaActivity>();
         if (queue.Any(queueItem => queueItem.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key))))
         {
             activityData = await _activityService.GetActivityDataAsync(queue); 
@@ -81,29 +81,17 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         {
             using (_logger.BeginScope("Processing check-in item for {date}", item.CheckinFields.Date))
             {
-                if (!item.FormResponse.TryGetValue("Feel Well-Rested", out _))
+                bool shouldSkipItem = ShouldSkipItem(item, weightData, activityData);
+                if (shouldSkipItem) 
                 {
-                    _logger.LogInformation("Morning check-in not completed. Skipping {@item}", item);
                     unprocessed.Add(item);
                     continue;
                 }
 
                 var updatedItem = UpdateTimeInBed(item);
-
-                if (updatedItem.GetWeight != null)
-                    updatedItem = UpdateWeightData(updatedItem, weightData);
-
-                (updatedItem, var skipCurrentItem) = ProcessActivityData(updatedItem, activityData);
-                if (skipCurrentItem)
-                {
-                    _logger.LogError(
-                        "Error retrieving activity data with tracked activities in form response. Skipping {@item}",
-                        updatedItem);
+                updatedItem = UpdateWeightData(updatedItem, weightData);
+                updatedItem = ProcessActivityData(updatedItem, activityData);
                 
-                    unprocessed.Add(updatedItem);
-                    continue;
-                }
-
                 try
                 {
                     var json = updatedItem.Serialize();
@@ -131,37 +119,66 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
         return new CheckinResponse(ConcatenateResults(results), unprocessed);
     }
-
-    private (CheckinItem, bool skipCurrentItem) ProcessActivityData(CheckinItem item, StravaActivity[]? activityData)
+    
+    private bool ShouldSkipItem(CheckinItem item, List<Weight> weightData, List<StravaActivity> activityData)
     {
-        var itemContainsTrackedActivities = item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key));
-        
-        if (!itemContainsTrackedActivities) 
-            return (item, skipCurrentItem: false);
-        
-        if (activityData == null)
-            return (item, skipCurrentItem: true);
+        if (!item.FormResponse.TryGetValue("Feel Well-Rested", out _))
+        {
+            _logger.LogInformation("Morning check-in not completed. Skipping...");
+            return true;
+        }
 
+        var noWeightDataFound = !weightData.Any(w => w.Date == item.CheckinFields.Date);
+        if (item.GetWeight && noWeightDataFound)
+        {
+            _logger.LogError("Weight data not found with getWeight flag set");
+            return true;
+        }
+        
+        var date = DateTime.Parse(item.CheckinFields.Date).Date;
+        var itemContainsTrackedActivities = item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key));
+        if (itemContainsTrackedActivities && !activityData.Any(a => DateTime.Parse(a.StartDateLocal).Date == date))
+        {
+            _logger.LogError(
+                "Tracked activities in queue for but no activity data found for {@missingActivities}",
+                item.FormResponse.Keys.Where(x => _lists.TrackedActivities.Contains(x)).ToList());
+            
+            return true;
+        }
+
+        return false;
+    }
+
+    private CheckinItem ProcessActivityData(CheckinItem item, List<StravaActivity> activityData)
+    {
+        if (activityData.Count == 0)
+            return item;
+        
         var date = DateTime.Parse(item.CheckinFields.Date);
         foreach (var activity in _lists.TrackedActivities)
         {
-            if (!activityData.Any(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date))
+            var matchingActivities = activityData
+                .Where(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date)
+                .ToList();
+            
+            if (!matchingActivities.Any())
                 continue;
                                 
-            var activitySums = activityData
-                .Where(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date)
-                .Sum(a => a.Distance);
+            var activitySums = matchingActivities.Sum(a => a.Distance);
                                 
             _logger.LogDebug("Sum for {activity}: {sum}", activity, activitySums);
             item.FormResponse[activity] = activitySums.ToString();
         }
 
-        return (item, skipCurrentItem: false);
+        return item;
     }
 
-    private CheckinItem UpdateWeightData(CheckinItem item, Weight[]? weightData)
+    private CheckinItem UpdateWeightData(CheckinItem item, List<Weight> weightData)
     {
-        var data = weightData?.FirstOrDefault(w => w.Date == item.CheckinFields.Date);
+        if (!item.GetWeight)
+            return item;
+        
+        var data = weightData.FirstOrDefault(w => w.Date == item.CheckinFields.Date);
         if (data == null)
         {
             _logger.LogWarning("Weight data not found for {date} with getWeight flag set", item.CheckinFields.Date);

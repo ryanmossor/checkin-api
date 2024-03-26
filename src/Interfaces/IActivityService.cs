@@ -4,5 +4,5 @@ namespace CheckinApi.Interfaces;
 
 public interface IActivityService
 {
-    Task<StravaActivity[]?> GetActivityDataAsync(List<CheckinItem> queue);
+    Task<List<StravaActivity>> GetActivityDataAsync(List<CheckinItem> queue);
 }
