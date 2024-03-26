@@ -48,7 +48,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                 
                 var resultsString = string.Join(",", _lists.FullChecklist.Select(x => item.FormResponse.GetValueOrDefault(x)));
                 results.Add(new CheckinResult(item.CheckinFields, resultsString));
-                _logger.LogDebug("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
+                _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
             }
             catch (Exception ex)
             {
@@ -106,7 +106,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
                 var resultsString = string.Join(",", _lists.FullChecklist.Select(x => updatedItem.FormResponse.GetValueOrDefault(x)));
                 results.Add(new CheckinResult(updatedItem.CheckinFields, resultsString));
-                _logger.LogDebug("Results string: {resultsString}", resultsString);
+                _logger.LogInformation("Results string: {resultsString}", resultsString);
             }
         }
 
@@ -128,20 +128,21 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             return true;
         }
 
-        var noWeightDataFound = !weightData.Any(w => w.Date == item.CheckinFields.Date);
-        if (item.GetWeight && noWeightDataFound)
+        var matchingWeightData = weightData.Any(w => w.Date == item.CheckinFields.Date); 
+        if (item.GetWeight && !matchingWeightData)
         {
-            _logger.LogError("Weight data not found with getWeight flag set");
+            _logger.LogWarning("getWeight flag set but no matching weight data found");
             return true;
         }
         
-        var date = DateTime.Parse(item.CheckinFields.Date).Date;
+        var checkinDate = DateTime.Parse(item.CheckinFields.Date).Date;
         var itemContainsTrackedActivities = item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key));
-        if (itemContainsTrackedActivities && !activityData.Any(a => DateTime.Parse(a.StartDateLocal).Date == date))
+        var matchingActivityData = activityData.Any(a => DateTime.Parse(a.StartDateLocal).Date == checkinDate);
+        if (itemContainsTrackedActivities && !matchingActivityData)
         {
-            _logger.LogError(
-                "Tracked activities in queue for but no activity data found for {@missingActivities}",
-                item.FormResponse.Keys.Where(x => _lists.TrackedActivities.Contains(x)).ToList());
+            _logger.LogWarning(
+                "Tracked activities in queue but no activity data found for {@missingActivities}",
+                item.FormResponse.Keys.Where(key => _lists.TrackedActivities.Contains(key)).ToList());
             
             return true;
         }
@@ -180,11 +181,8 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         
         var data = weightData.FirstOrDefault(w => w.Date == item.CheckinFields.Date);
         if (data == null)
-        {
-            _logger.LogWarning("Weight data not found for {date} with getWeight flag set", item.CheckinFields.Date);
             return item;
-        }
-
+        
         item.FormResponse["BMI"] = data.Bmi.ToString();
         item.FormResponse["Body fat %"] = data.Fat.ToString();
         item.FormResponse["Weight (lbs)"] = data.Lbs.ToString();
@@ -239,7 +237,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                 new CheckinFields(firstRes.SpreadsheetName, firstRes.Date, firstRes.Month, firstRes.CellReference),
                 resultsString: sb.ToString());
             
-            _logger.LogDebug("Concatenated results for month {month}: {@res}", firstRes.Month, result);
+            _logger.LogInformation("Concatenated results for month {month}: {@res}", firstRes.Month, result);
             concatenatedResults.Add(result);
         }
 
