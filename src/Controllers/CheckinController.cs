@@ -31,14 +31,14 @@ public class CheckinController : ControllerBase
     }
     
     [HttpGet("process")]
-    public async Task<IActionResult> ProcessCheckinDatesAsync([FromQuery] string dates) 
+    public async Task<IActionResult> ProcessCheckinDatesAsync([FromQuery] string dates, [FromQuery] bool concatResults) 
     {
-        var result = await _processor.ProcessSavedResultsAsync(dates);
+        var result = await _processor.ProcessSavedResultsAsync(dates, concatResults);
         return new OkObjectResult(result);
     }
 
     [HttpPost("process")]
-    public async Task<IActionResult> ProcessCheckinQueueAsync([FromBody] CheckinRequest request)
+    public async Task<IActionResult> ProcessCheckinQueueAsync([FromBody] CheckinRequest request, [FromQuery] bool concatResults)
     {
         if (!request.Queue.Any())
             return new BadRequestObjectResult("No items in check-in queue");
@@ -54,14 +54,14 @@ public class CheckinController : ControllerBase
             _logger.LogError(ex, "Error writing request to file");
         }
             
-        var result = await _processor.ProcessQueueAsync(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList());
+        var result = await _processor.ProcessQueueAsync(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList(), concatResults);
         return new OkObjectResult(result);
     }
 
     [HttpPost("single")] // test, remove
-    public async Task<IActionResult> ProcessSingleCheckinItemAsync([FromBody] CheckinItem item)
+    public async Task<IActionResult> ProcessSingleCheckinItemAsync([FromBody] CheckinItem item, [FromQuery] bool concatResults)
     {
-        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item });
+        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item }, concatResults);
         return new OkObjectResult(result);
     }
 

@@ -29,7 +29,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         _config = config;
     }
     
-    public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates) 
+    public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates, bool concatResults) 
     {
         var files = Directory.GetFiles(_config.ResultsDir).Select(Path.GetFileNameWithoutExtension);
         var missingResults = dates.Split(',').Where(f => !files.Contains(f)).ToList();
@@ -59,11 +59,14 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                 _logger.LogError(ex, "Error retrieving data for {date}", date);
             }
         }
-
-        return new CheckinResponse(ConcatenateResults(results));
+        
+        if (concatResults)
+            return new CheckinResponse(ConcatenateResults(results));
+            
+        return new CheckinResponse(results);
     }
 
-    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue)
+    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue, bool concatResults)
     {
         var stopwatch = Stopwatch.StartNew();
         var unprocessed = new List<CheckinItem>();
@@ -127,8 +130,11 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             unprocessed.Count,
             stopwatch.ElapsedMilliseconds,
             unprocessed);
+        
+        if (concatResults)
+            return new CheckinResponse(ConcatenateResults(results), unprocessed);
 
-        return new CheckinResponse(ConcatenateResults(results), unprocessed);
+        return new CheckinResponse(results, unprocessed);
     }
     
     private bool ShouldSkipItem(CheckinItem item, List<Weight> weightData, List<StravaActivity> activityData)
