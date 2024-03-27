@@ -4,7 +4,7 @@ using CheckinApi.Interfaces;
 
 namespace CheckinApi.Services;
 
-public class StravaAuthService : IAuthService
+public class StravaAuthService : IStravaAuthService
 {
     private const string BaseApiUrl = "https://www.strava.com/oauth/token";
 
@@ -12,6 +12,16 @@ public class StravaAuthService : IAuthService
     private readonly HttpClient _httpClient;
     private readonly ILogger<StravaAuthService> _logger;
     private readonly CheckinConfig _config;
+    
+    public StravaAuthInfo Auth 
+    {
+        get 
+        {
+            if (IsTokenExpired())
+                RefreshTokenAsync().GetAwaiter().GetResult();
+            return _secrets.Strava.auth;
+        }
+    }
     
     public StravaAuthService(
         CheckinSecrets secrets,

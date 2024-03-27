@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Net.Mime;
-using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
 using CheckinApi.Models;
@@ -12,23 +11,18 @@ public class FitbitService : IHealthTrackingService
     private const string BaseApiUrl = "https://api.fitbit.com";
 
     private readonly HttpClient _httpClient;
-    private readonly CheckinSecrets _secrets;
-    private readonly IAuthService _authService;
+    private readonly IFitbitAuthService _authService;
     private readonly ILogger<FitbitService> _logger;
 
-    public FitbitService(HttpClient httpClient, CheckinSecrets secrets, IAuthService authService, ILogger<FitbitService> logger)
+    public FitbitService(HttpClient httpClient, IFitbitAuthService authService, ILogger<FitbitService> logger)
     {
         _httpClient = httpClient;
-        _secrets = secrets;
         _authService = authService;
         _logger = logger;
     }
 
     public async Task<List<Weight>> GetWeightDataAsync(List<CheckinItem> queue)
     {
-        if (_authService.IsTokenExpired())
-            await _authService.RefreshTokenAsync();
-        
         var startDate = queue.First().CheckinFields.Date;
         var endDate = queue.Last().CheckinFields.Date;
         
@@ -39,8 +33,8 @@ public class FitbitService : IHealthTrackingService
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
             request.Headers.Authorization = new AuthenticationHeaderValue(
-                _secrets.Fitbit.auth.token_type,
-                _secrets.Fitbit.auth.access_token);
+                _authService.Auth.token_type,
+                _authService.Auth.access_token);
             
             HttpResponseMessage? response = null;
             try

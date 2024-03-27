@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Net.Mime;
-using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
 using CheckinApi.Models;
@@ -12,23 +11,18 @@ public class StravaService : IActivityService
     private const string BaseApiUrl = "https://www.strava.com/api/v3";
 
     private readonly HttpClient _httpClient;
-    private readonly CheckinSecrets _secrets;
-    private readonly IAuthService _authService;
+    private readonly IStravaAuthService _authService;
     private readonly ILogger<StravaService> _logger;
 
-    public StravaService(HttpClient httpClient, CheckinSecrets secrets, IAuthService authService, ILogger<StravaService> logger)
+    public StravaService(HttpClient httpClient, IStravaAuthService authService, ILogger<StravaService> logger)
     {
         _httpClient = httpClient;
-        _secrets = secrets;
         _authService = authService;
         _logger = logger;
     }
 
     public async Task<List<StravaActivity>> GetActivityDataAsync(List<CheckinItem> queue)
     {
-        if (_authService.IsTokenExpired())
-            await _authService.RefreshTokenAsync();
-        
         var firstQueueItemDate = DateTimeOffset.Parse(queue.First().CheckinFields.Date);
         var lastQueueItemDate = DateTimeOffset.Parse(queue.Last().CheckinFields.Date).AddDays(1).AddSeconds(-1);
         
@@ -43,8 +37,8 @@ public class StravaService : IActivityService
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
             request.Headers.Authorization = new AuthenticationHeaderValue(
-                _secrets.Strava.auth.token_type,
-                _secrets.Strava.auth.access_token);
+                _authService.Auth.token_type,
+                _authService.Auth.access_token);
 
             HttpResponseMessage? response = null;
             try 

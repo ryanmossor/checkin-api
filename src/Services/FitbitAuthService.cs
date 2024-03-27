@@ -7,7 +7,7 @@ using CheckinApi.Interfaces;
 
 namespace CheckinApi.Services;
 
-public class FitbitAuthService : IAuthService
+public class FitbitAuthService : IFitbitAuthService
 {
     private const string BaseApiUrl = "https://api.fitbit.com/oauth2/token";
 
@@ -22,6 +22,16 @@ public class FitbitAuthService : IAuthService
         _httpClient = httpClient;
         _logger = logger;
         _config = config;
+    }
+    
+    public FitbitAuthInfo Auth 
+    {
+        get 
+        {
+            if (IsTokenExpired())
+                RefreshTokenAsync().GetAwaiter().GetResult();
+            return _secrets.Fitbit.auth;
+        }
     }
     
     public async Task RefreshTokenAsync()

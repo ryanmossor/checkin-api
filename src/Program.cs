@@ -46,7 +46,6 @@ builder.Services.AddSingleton(s => new StravaAuthService(
 
 builder.Services.AddSingleton<IActivityService, StravaService>(s => new StravaService(
     s.GetRequiredService<HttpClient>(),
-    s.GetRequiredService<CheckinSecrets>(),
     s.GetRequiredService<StravaAuthService>(),
     s.GetRequiredService<ILogger<StravaService>>()));
 
@@ -58,7 +57,6 @@ builder.Services.AddSingleton(s => new FitbitAuthService(
 
 builder.Services.AddSingleton<IHealthTrackingService, FitbitService>(s => new FitbitService(
     s.GetRequiredService<HttpClient>(),
-    s.GetRequiredService<CheckinSecrets>(),
     s.GetRequiredService<FitbitAuthService>(),
     s.GetRequiredService<ILogger<FitbitService>>()));
 
