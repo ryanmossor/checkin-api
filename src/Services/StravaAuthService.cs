@@ -1,7 +1,6 @@
 using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
-using CheckinApi.Models;
 
 namespace CheckinApi.Services;
 
@@ -12,12 +11,18 @@ public class StravaAuthService : IAuthService
     private readonly CheckinSecrets _secrets;
     private readonly HttpClient _httpClient;
     private readonly ILogger<StravaAuthService> _logger;
+    private readonly CheckinConfig _config;
     
-    public StravaAuthService(CheckinSecrets secrets, HttpClient httpClient, ILogger<StravaAuthService> logger)
+    public StravaAuthService(
+        CheckinSecrets secrets,
+        HttpClient httpClient,
+        ILogger<StravaAuthService> logger,
+        CheckinConfig config)
     {
         _secrets = secrets;
         _httpClient = httpClient;
         _logger = logger;
+        _config = config;
     }
 
     public async Task RefreshTokenAsync()
@@ -43,7 +48,7 @@ public class StravaAuthService : IAuthService
             var refreshedAuth = json.Deserialize<StravaAuthInfo>();
             
             _secrets.Strava.UpdateAuth(refreshedAuth);
-            await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.SerializePretty());
+            await File.WriteAllTextAsync(_config.SecretsFile, _secrets.SerializePretty());
         }
         catch (Exception ex)
         {

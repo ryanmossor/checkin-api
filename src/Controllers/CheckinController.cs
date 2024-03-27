@@ -1,3 +1,4 @@
+using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
 using CheckinApi.Models;
@@ -13,12 +14,14 @@ public class CheckinController : ControllerBase
     private readonly ICheckinLists _lists;
     private readonly ICheckinQueueProcessor _processor;
     private readonly ILogger<CheckinController> _logger;
+    private readonly CheckinConfig _config;
     
-    public CheckinController(ICheckinQueueProcessor processor, ICheckinLists lists, ILogger<CheckinController> logger)
+    public CheckinController(ICheckinQueueProcessor processor, ICheckinLists lists, ILogger<CheckinController> logger, CheckinConfig config)
     {
         _processor = processor;
         _lists = lists;
         _logger = logger;
+        _config = config;
     }
 
     [HttpGet]
@@ -44,7 +47,7 @@ public class CheckinController : ControllerBase
         {
             var json = request.Serialize();
             var filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
-            await System.IO.File.WriteAllTextAsync(Path.Combine(Constants.RequestsDir, filename), json);
+            await System.IO.File.WriteAllTextAsync(Path.Combine(_config.RequestsDir, filename), json);
         } 
         catch (Exception ex)
         {
@@ -78,7 +81,7 @@ public class CheckinController : ControllerBase
     {
         try
         {
-            var item = await System.IO.File.ReadAllTextAsync(Path.Combine(Constants.ResultsDir, $"{date}.json"));
+            var item = await System.IO.File.ReadAllTextAsync(Path.Combine(_config.ResultsDir, $"{date}.json"));
             return new OkObjectResult(item.Deserialize<CheckinItem>());
         }
         catch (Exception ex)
@@ -93,7 +96,7 @@ public class CheckinController : ControllerBase
     {
         try
         {
-            var files = Directory.GetFiles(Constants.ResultsDir)
+            var files = Directory.GetFiles(_config.ResultsDir)
                 .Select(Path.GetFileNameWithoutExtension)
                 .Where(filename => filename!.StartsWith($"{year}-{month}"));
 

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
 using CheckinApi.Models;
@@ -12,22 +13,25 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
     private readonly ICheckinLists _lists;
     private readonly IActivityService _activityService;
     private readonly IHealthTrackingService _healthTrackingService;
+    private readonly CheckinConfig _config;
 
     public CheckinQueueProcessor(
         ICheckinLists lists,
         IActivityService activityService,
         IHealthTrackingService healthTrackingService,
-        ILogger<CheckinQueueProcessor> logger)
+        ILogger<CheckinQueueProcessor> logger,
+        CheckinConfig config)
     {
         _lists = lists;
         _activityService = activityService;
         _healthTrackingService = healthTrackingService;
         _logger = logger;
+        _config = config;
     }
     
     public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates) 
     {
-        var files = Directory.GetFiles(Constants.ResultsDir).Select(Path.GetFileNameWithoutExtension);
+        var files = Directory.GetFiles(_config.ResultsDir).Select(Path.GetFileNameWithoutExtension);
         var missingResults = dates.Split(',').Where(f => !files.Contains(f)).ToList();
         
         if (missingResults.Any()) 
@@ -43,7 +47,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         {
             try
             {
-                var contents = await File.ReadAllTextAsync(Path.Combine(Constants.ResultsDir, $"{date}.json"));
+                var contents = await File.ReadAllTextAsync(Path.Combine(_config.ResultsDir, $"{date}.json"));
                 var item = contents.Deserialize<CheckinItem>();
                 
                 var resultsString = string.Join(",", _lists.FullChecklist.Select(x => item.FormResponse.GetValueOrDefault(x)));
@@ -96,7 +100,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                 {
                     var json = updatedItem.Serialize();
                     await File.WriteAllTextAsync(
-                        Path.Combine(Constants.ResultsDir, $"{updatedItem.CheckinFields.Date}.json"),
+                        Path.Combine(_config.ResultsDir, $"{updatedItem.CheckinFields.Date}.json"),
                         json);
                 }
                 catch (Exception ex)

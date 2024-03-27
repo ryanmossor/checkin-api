@@ -1,12 +1,23 @@
 using CheckinApi.Config;
 using CheckinApi.Interfaces;
-using CheckinApi.Models;
 using CheckinApi.Services;
 using Serilog;
 using Serilog.Events;
 using Swashbuckle.AspNetCore.SwaggerUI;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();
+
+var config = builder.Configuration.Get<CheckinConfig>()!;
+builder.Services.AddSingleton(config);
+
+builder.Configuration.AddJsonFile(config.SecretsFile, optional: false, reloadOnChange: true);
+builder.Services.AddSingleton(builder.Configuration.Get<CheckinSecrets>());
 
 Log.Logger = new LoggerConfiguration()
      .Enrich.FromLogContext()
@@ -25,36 +36,31 @@ builder.Host.UseSerilog(dispose: true);
 
 builder.Services.AddHttpClient();
 
-builder.Configuration
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-    .AddEnvironmentVariables();
-
-Constants.DataDir = builder.Configuration[nameof(Constants.DataDir)];
-builder.Configuration.AddJsonFile(Constants.SecretsFile, optional: false, reloadOnChange: true);
-
-builder.Services.AddSingleton(builder.Configuration.Get<CheckinSecrets>());
-
 builder.Services.AddSingleton<ICheckinLists, CheckinLists>();
 
-builder.Services.AddSingleton(_ => new StravaAuthService(
-    _.GetRequiredService<CheckinSecrets>(), new HttpClient(), _.GetRequiredService<ILogger<StravaAuthService>>()));
+builder.Services.AddSingleton(s => new StravaAuthService(
+    s.GetRequiredService<CheckinSecrets>(),
+    s.GetRequiredService<HttpClient>(),
+    s.GetRequiredService<ILogger<StravaAuthService>>(),
+    s.GetRequiredService<CheckinConfig>()));
 
-builder.Services.AddSingleton<IActivityService, StravaService>(_ => new StravaService(
-    _.GetRequiredService<HttpClient>(),
-    _.GetRequiredService<CheckinSecrets>(),
-    _.GetRequiredService<StravaAuthService>(),
-    _.GetRequiredService<ILogger<StravaService>>()));
+builder.Services.AddSingleton<IActivityService, StravaService>(s => new StravaService(
+    s.GetRequiredService<HttpClient>(),
+    s.GetRequiredService<CheckinSecrets>(),
+    s.GetRequiredService<StravaAuthService>(),
+    s.GetRequiredService<ILogger<StravaService>>()));
 
-builder.Services.AddSingleton(_ => new FitbitAuthService(
-    _.GetRequiredService<CheckinSecrets>(), new HttpClient(), _.GetRequiredService<ILogger<FitbitAuthService>>()));
+builder.Services.AddSingleton(s => new FitbitAuthService(
+    s.GetRequiredService<CheckinSecrets>(),
+    s.GetRequiredService<HttpClient>(),
+    s.GetRequiredService<ILogger<FitbitAuthService>>(),
+    s.GetRequiredService<CheckinConfig>()));
 
-builder.Services.AddSingleton<IHealthTrackingService, FitbitService>(_ => new FitbitService(
-    _.GetRequiredService<HttpClient>(),
-    _.GetRequiredService<CheckinSecrets>(),
-    _.GetRequiredService<FitbitAuthService>(),
-    _.GetRequiredService<ILogger<FitbitService>>()));
+builder.Services.AddSingleton<IHealthTrackingService, FitbitService>(s => new FitbitService(
+    s.GetRequiredService<HttpClient>(),
+    s.GetRequiredService<CheckinSecrets>(),
+    s.GetRequiredService<FitbitAuthService>(),
+    s.GetRequiredService<ILogger<FitbitService>>()));
 
 builder.Services.AddSingleton<ICheckinQueueProcessor, CheckinQueueProcessor>();
 

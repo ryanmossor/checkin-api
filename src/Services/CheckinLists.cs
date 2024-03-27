@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
+using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
-using Constants = CheckinApi.Models.Constants;
 
 namespace CheckinApi.Services;
 
@@ -9,17 +9,19 @@ public class CheckinLists : ICheckinLists
 {
     private readonly object _lock = new();
     private readonly ILogger<CheckinLists> _logger;
+    private readonly CheckinConfig _config;
 
     public List<string>? FullChecklist { get; private set; }
     public List<string>? TrackedActivities { get; private set; }
     
-    public CheckinLists(ILogger<CheckinLists> logger)
+    public CheckinLists(ILogger<CheckinLists> logger, CheckinConfig config)
     {
         _logger = logger;
+        _config = config;
         
-        try 
+        try
         {
-            var listsJson = File.ReadAllText(Constants.ListsFile);
+            var listsJson = File.ReadAllText(_config.ChecklistsFile);
             var lists = listsJson.Deserialize<CheckinLists>();
             
             _logger.LogDebug("Initializing check-in lists: {lists}", listsJson);
@@ -50,7 +52,7 @@ public class CheckinLists : ICheckinLists
         try
         {
             var json = this.Serialize();
-            await File.WriteAllTextAsync(Constants.ListsFile, json);
+            await File.WriteAllTextAsync(_config.ChecklistsFile, json);
         }
         catch (Exception ex)
         {

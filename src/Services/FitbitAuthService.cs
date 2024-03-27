@@ -1,11 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
-using System.Net.Mime;
 using System.Text;
 using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
-using CheckinApi.Models;
 
 namespace CheckinApi.Services;
 
@@ -16,12 +14,14 @@ public class FitbitAuthService : IAuthService
     private readonly CheckinSecrets _secrets;
     private readonly HttpClient _httpClient;
     private readonly ILogger<FitbitAuthService> _logger;
+    private readonly CheckinConfig _config;
     
-    public FitbitAuthService(CheckinSecrets secrets, HttpClient httpClient, ILogger<FitbitAuthService> logger)
+    public FitbitAuthService(CheckinSecrets secrets, HttpClient httpClient, ILogger<FitbitAuthService> logger, CheckinConfig config)
     {
         _secrets = secrets;
         _httpClient = httpClient;
         _logger = logger;
+        _config = config;
     }
     
     public async Task RefreshTokenAsync()
@@ -54,7 +54,7 @@ public class FitbitAuthService : IAuthService
             var refreshedAuth = json.Deserialize<FitbitAuthInfo>();
             
             _secrets.Fitbit.UpdateAuth(refreshedAuth);
-            await File.WriteAllTextAsync(Constants.SecretsFile, _secrets.SerializePretty());
+            await File.WriteAllTextAsync(_config.SecretsFile, _secrets.SerializePretty());
         }
         catch (Exception ex)
         {

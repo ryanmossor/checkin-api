@@ -34,9 +34,6 @@ public class FitbitService : IHealthTrackingService
         
         using (_logger.BeginScope("Getting weight data from {start} to {end}", startDate, endDate)) 
         {
-            if (_authService.IsTokenExpired())
-                await _authService.RefreshTokenAsync();
-            
             var url = $"{BaseApiUrl}/1/user/-/body/log/weight/date/{startDate}/{endDate}.json";
             
             var request = new HttpRequestMessage(HttpMethod.Get, url);
