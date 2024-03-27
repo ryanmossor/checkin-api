@@ -16,7 +16,11 @@ public class CheckinController : ControllerBase
     private readonly ILogger<CheckinController> _logger;
     private readonly CheckinConfig _config;
     
-    public CheckinController(ICheckinQueueProcessor processor, ICheckinLists lists, ILogger<CheckinController> logger, CheckinConfig config)
+    public CheckinController(
+        ICheckinQueueProcessor processor,
+        ICheckinLists lists,
+        ILogger<CheckinController> logger,
+        CheckinConfig config)
     {
         _processor = processor;
         _lists = lists;
@@ -38,7 +42,10 @@ public class CheckinController : ControllerBase
     }
 
     [HttpPost("process")]
-    public async Task<IActionResult> ProcessCheckinQueueAsync([FromBody] CheckinRequest request, [FromQuery] bool concatResults)
+    public async Task<IActionResult> ProcessCheckinQueueAsync(
+        [FromBody] CheckinRequest request,
+        [FromQuery] bool concatResults,
+        [FromQuery] bool forceProcessing)
     {
         if (!request.Queue.Any())
             return new BadRequestObjectResult("No items in check-in queue");
@@ -54,14 +61,21 @@ public class CheckinController : ControllerBase
             _logger.LogError(ex, "Error writing request to file");
         }
             
-        var result = await _processor.ProcessQueueAsync(request.Queue.OrderBy(x => x.CheckinFields.Date).ToList(), concatResults);
+        var result = await _processor.ProcessQueueAsync(
+            request.Queue.OrderBy(x => x.CheckinFields.Date).ToList(),
+            concatResults,
+            forceProcessing);
+        
         return new OkObjectResult(result);
     }
 
     [HttpPost("single")] // test, remove
-    public async Task<IActionResult> ProcessSingleCheckinItemAsync([FromBody] CheckinItem item, [FromQuery] bool concatResults)
+    public async Task<IActionResult> ProcessSingleCheckinItemAsync(
+        [FromBody] CheckinItem item,
+        [FromQuery] bool concatResults,
+        [FromQuery] bool forceProcessing)
     {
-        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item }, concatResults);
+        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item }, concatResults, forceProcessing);
         return new OkObjectResult(result);
     }
 

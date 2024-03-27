@@ -9,10 +9,10 @@ namespace CheckinApi.Services;
 
 public class CheckinQueueProcessor : ICheckinQueueProcessor
 {
-    private readonly ILogger<CheckinQueueProcessor> _logger;
     private readonly ICheckinLists _lists;
     private readonly IActivityService _activityService;
     private readonly IHealthTrackingService _healthTrackingService;
+    private readonly ILogger<CheckinQueueProcessor> _logger;
     private readonly CheckinConfig _config;
 
     public CheckinQueueProcessor(
@@ -66,7 +66,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         return new CheckinResponse(results);
     }
 
-    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue, bool concatResults)
+    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue, bool concatResults, bool forceProcessing)
     {
         var stopwatch = Stopwatch.StartNew();
         var unprocessed = new List<CheckinItem>();
@@ -88,8 +88,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         {
             using (_logger.BeginScope("Processing check-in item for {date}", item.CheckinFields.Date))
             {
-                bool shouldSkipItem = ShouldSkipItem(item, weightData, activityData);
-                if (shouldSkipItem) 
+                if (!forceProcessing && ShouldSkipItem(item, weightData, activityData))
                 {
                     unprocessed.Add(item);
                     continue;
