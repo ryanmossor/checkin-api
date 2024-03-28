@@ -15,6 +15,6 @@ public class StravaSecrets
         this.client_secret = client_secret;
         this.auth = auth;
     }
-    
+
     public void UpdateAuth(StravaAuthInfo refreshedAuthData) => auth = refreshedAuthData;
 }

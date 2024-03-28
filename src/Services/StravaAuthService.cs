@@ -12,17 +12,17 @@ public class StravaAuthService : IStravaAuthService
     private readonly HttpClient _httpClient;
     private readonly ILogger<StravaAuthService> _logger;
     private readonly CheckinConfig _config;
-    
-    public StravaAuthInfo Auth 
+
+    public StravaAuthInfo Auth
     {
-        get 
+        get
         {
             if (IsTokenExpired())
                 RefreshTokenAsync().GetAwaiter().GetResult();
             return _secrets.Strava.auth;
         }
     }
-    
+
     public StravaAuthService(
         CheckinSecrets secrets,
         HttpClient httpClient,
@@ -41,22 +41,22 @@ public class StravaAuthService : IStravaAuthService
                   $"&client_secret={_secrets.Strava.client_secret}" +
                   $"&refresh_token={_secrets.Strava.auth.refresh_token}" +
                   $"&grant_type=refresh_token";
-        
+
         HttpResponseMessage? response = null;
         try
         {
             _logger.LogDebug("Refreshing Strava token...");
             response = await _httpClient.PostAsJsonAsync(url, string.Empty);
 
-            if (!response.IsSuccessStatusCode) 
+            if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("Unsuccessful Strava token refresh: {@res}", response.Content.ReadAsStringAsync().Result);
                 return;
             }
-        
+
             var json = await response.Content.ReadAsStringAsync();
             var refreshedAuth = json.Deserialize<StravaAuthInfo>();
-            
+
             _secrets.Strava.UpdateAuth(refreshedAuth);
             await File.WriteAllTextAsync(_config.SecretsFile, _secrets.SerializePretty());
         }
@@ -65,6 +65,6 @@ public class StravaAuthService : IStravaAuthService
             _logger.LogError(ex, "Error refreshing Strava config {requestUrl} {@res}", url, response);
         }
     }
-    
-    public bool IsTokenExpired() => _secrets.Strava.auth.expires_at < DateTimeOffset.UtcNow.ToUnixTimeSeconds(); 
+
+    public bool IsTokenExpired() => _secrets.Strava.auth.expires_at < DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 }

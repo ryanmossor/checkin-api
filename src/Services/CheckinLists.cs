@@ -13,17 +13,17 @@ public class CheckinLists : ICheckinLists
 
     public List<string>? FullChecklist { get; private set; }
     public List<string>? TrackedActivities { get; private set; }
-    
+
     public CheckinLists(ILogger<CheckinLists> logger, CheckinConfig config)
     {
         _logger = logger;
         _config = config;
-        
+
         try
         {
             var listsJson = File.ReadAllText(_config.ChecklistsFile);
             var lists = listsJson.Deserialize<CheckinLists>();
-            
+
             _logger.LogDebug("Initializing check-in lists: {lists}", listsJson);
             FullChecklist = lists.FullChecklist;
             TrackedActivities = lists.TrackedActivities;

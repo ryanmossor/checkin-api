@@ -15,7 +15,7 @@ public class CheckinController : ControllerBase
     private readonly ICheckinQueueProcessor _processor;
     private readonly ILogger<CheckinController> _logger;
     private readonly CheckinConfig _config;
-    
+
     public CheckinController(
         ICheckinQueueProcessor processor,
         ICheckinLists lists,
@@ -33,9 +33,9 @@ public class CheckinController : ControllerBase
     {
         return "Hello world\n";
     }
-    
+
     [HttpGet("process")]
-    public async Task<IActionResult> ProcessCheckinDatesAsync([FromQuery] string dates, [FromQuery] bool concatResults) 
+    public async Task<IActionResult> ProcessCheckinDatesAsync([FromQuery] string dates, [FromQuery] bool concatResults)
     {
         var result = await _processor.ProcessSavedResultsAsync(dates, concatResults);
         return new OkObjectResult(result);
@@ -49,23 +49,23 @@ public class CheckinController : ControllerBase
     {
         if (!request.Queue.Any())
             return new BadRequestObjectResult("No items in check-in queue");
-        
+
         try
         {
             var json = request.Serialize();
             var filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
             await System.IO.File.WriteAllTextAsync(Path.Combine(_config.RequestsDir, filename), json);
-        } 
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error writing request to file");
         }
-            
+
         var result = await _processor.ProcessQueueAsync(
             request.Queue.OrderBy(x => x.CheckinFields.Date).ToList(),
             concatResults,
             forceProcessing);
-        
+
         return new OkObjectResult(result);
     }
 
@@ -119,7 +119,7 @@ public class CheckinController : ControllerBase
                 return new OkObjectResult(new { Files = files.Select(Path.GetFileNameWithoutExtension).OrderDescending() });
             }
 
-            return new OkObjectResult(new { Files = files.Select(Path.GetFileNameWithoutExtension).Order()});
+            return new OkObjectResult(new { Files = files.Select(Path.GetFileNameWithoutExtension).Order() });
         }
         catch (Exception ex)
         {

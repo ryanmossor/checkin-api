@@ -64,7 +64,7 @@ builder.Services.AddSingleton<ICheckinQueueProcessor, CheckinQueueProcessor>();
 
 builder.Services.AddControllers();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
-    
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -78,9 +78,9 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
     options.InjectStylesheet("/swagger-ui/SwaggerDark.css");
     options.RoutePrefix = string.Empty;
-    
-    if (!app.Environment.IsDevelopment()) 
-        options.SupportedSubmitMethods(SubmitMethod.Get); 
+
+    if (!app.Environment.IsDevelopment())
+        options.SupportedSubmitMethods(SubmitMethod.Get);
 });
 
 // commented out to access via local network since dev cert untrusted

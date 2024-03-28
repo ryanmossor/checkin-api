@@ -15,7 +15,7 @@ public class FitbitAuthService : IFitbitAuthService
     private readonly HttpClient _httpClient;
     private readonly ILogger<FitbitAuthService> _logger;
     private readonly CheckinConfig _config;
-    
+
     public FitbitAuthService(CheckinSecrets secrets, HttpClient httpClient, ILogger<FitbitAuthService> logger, CheckinConfig config)
     {
         _secrets = secrets;
@@ -23,26 +23,26 @@ public class FitbitAuthService : IFitbitAuthService
         _logger = logger;
         _config = config;
     }
-    
-    public FitbitAuthInfo Auth 
+
+    public FitbitAuthInfo Auth
     {
-        get 
+        get
         {
             if (IsTokenExpired())
                 RefreshTokenAsync().GetAwaiter().GetResult();
             return _secrets.Fitbit.auth;
         }
     }
-    
+
     public async Task RefreshTokenAsync()
     {
         var basicTokenAsBytes = Encoding.UTF8.GetBytes($"{_secrets.Fitbit.client_id}:{_secrets.Fitbit.client_secret}");
         var basicTokenBase64 = Convert.ToBase64String(basicTokenAsBytes);
-        
+
         var request = new HttpRequestMessage(HttpMethod.Post, BaseApiUrl);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/x-www-form-urlencoded"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", basicTokenBase64);
-        
+
         request.Content = new StringContent(
             content: $"grant_type=refresh_token&refresh_token={_secrets.Fitbit.auth.refresh_token}",
             encoding: Encoding.UTF8,
@@ -54,15 +54,15 @@ public class FitbitAuthService : IFitbitAuthService
             _logger.LogDebug("Refreshing Fitbit token...");
             response = await _httpClient.SendAsync(request);
 
-            if (!response.IsSuccessStatusCode) 
+            if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("Unsuccessful Fitbit token refresh: {@res}", response.Content.ReadAsStringAsync().Result);
                 return;
             }
-        
+
             var json = await response.Content.ReadAsStringAsync();
             var refreshedAuth = json.Deserialize<FitbitAuthInfo>();
-            
+
             _secrets.Fitbit.UpdateAuth(refreshedAuth);
             await File.WriteAllTextAsync(_config.SecretsFile, _secrets.SerializePretty());
         }

@@ -25,17 +25,17 @@ public class FitbitService : IHealthTrackingService
     {
         var startDate = queue.First().CheckinFields.Date;
         var endDate = queue.Last().CheckinFields.Date;
-        
-        using (_logger.BeginScope("Getting weight data from {start} to {end}", startDate, endDate)) 
+
+        using (_logger.BeginScope("Getting weight data from {start} to {end}", startDate, endDate))
         {
             var url = $"{BaseApiUrl}/1/user/-/body/log/weight/date/{startDate}/{endDate}.json";
-            
+
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(MediaTypeNames.Application.Json));
             request.Headers.Authorization = new AuthenticationHeaderValue(
                 _authService.Auth.token_type,
                 _authService.Auth.access_token);
-            
+
             HttpResponseMessage? response = null;
             try
             {
@@ -45,11 +45,11 @@ public class FitbitService : IHealthTrackingService
                     _logger.LogError("Unsuccessful Fitbit API call: {@res}", response.Content.ReadAsStringAsync().Result);
                     return new List<Weight>();
                 }
-                
+
                 var content = await response.Content.ReadAsStringAsync();
                 var data = content.Deserialize<WeightData>();
                 _logger.LogDebug("Retrieved weight data: {@data}", data);
-                
+
                 return data.Weight;
             }
             catch (Exception ex)

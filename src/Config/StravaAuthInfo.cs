@@ -9,7 +9,7 @@ public class StravaAuthInfo
     public long expires_at { get; }
     public int expires_in { get; }
     public string refresh_token { get; }
-    
+
     [JsonConstructor]
     public StravaAuthInfo(string token_type, string access_token, long expires_at, int expires_in, string refresh_token)
     {

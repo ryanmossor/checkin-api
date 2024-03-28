@@ -8,7 +8,7 @@ public class FitbitSecrets
     public string client_secret { get; private set; }
     public FitbitAuthInfo auth { get; private set; }
 
-    [JsonConstructor] 
+    [JsonConstructor]
     public FitbitSecrets(string client_id, string client_secret, FitbitAuthInfo auth)
     {
         this.client_id = client_id;
