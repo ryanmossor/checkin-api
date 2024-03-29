@@ -29,15 +29,12 @@ public class CheckinController : ControllerBase
     }
 
     [HttpGet]
-    public string SayHello()
+    public async Task<IActionResult> ProcessCheckinDatesAsync(
+        [FromQuery] string dates,
+        [FromQuery] bool concatResults,
+        [FromQuery] string? delimiter)
     {
-        return "Hello world\n";
-    }
-
-    [HttpGet("process")]
-    public async Task<IActionResult> ProcessCheckinDatesAsync([FromQuery] string dates, [FromQuery] bool concatResults)
-    {
-        var result = await _processor.ProcessSavedResultsAsync(dates, concatResults);
+        var result = await _processor.ProcessSavedResultsAsync(dates, concatResults, delimiter);
         return new OkObjectResult(result);
     }
 
@@ -45,10 +42,13 @@ public class CheckinController : ControllerBase
     public async Task<IActionResult> ProcessCheckinQueueAsync(
         [FromBody] CheckinRequest request,
         [FromQuery] bool concatResults,
-        [FromQuery] bool forceProcessing)
+        [FromQuery] bool forceProcessing,
+        [FromQuery] string? delimiter)
     {
         if (!request.Queue.Any())
+        {
             return new BadRequestObjectResult("No items in check-in queue");
+        }
 
         try
         {
@@ -64,7 +64,8 @@ public class CheckinController : ControllerBase
         var result = await _processor.ProcessQueueAsync(
             request.Queue.OrderBy(x => x.CheckinFields.Date).ToList(),
             concatResults,
-            forceProcessing);
+            forceProcessing,
+            delimiter);
 
         return new OkObjectResult(result);
     }
@@ -73,9 +74,10 @@ public class CheckinController : ControllerBase
     public async Task<IActionResult> ProcessSingleCheckinItemAsync(
         [FromBody] CheckinItem item,
         [FromQuery] bool concatResults,
-        [FromQuery] bool forceProcessing)
+        [FromQuery] bool forceProcessing,
+        [FromQuery] string? delimiter)
     {
-        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item }, concatResults, forceProcessing);
+        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item }, concatResults, forceProcessing, delimiter);
         return new OkObjectResult(result);
     }
 
@@ -112,7 +114,13 @@ public class CheckinController : ControllerBase
         {
             var files = Directory.GetFiles(_config.ResultsDir)
                 .Select(Path.GetFileNameWithoutExtension)
-                .Where(filename => filename!.StartsWith($"{year}-{month}"));
+                .Where(filename => filename!.StartsWith($"{year}-{month}"))
+                .ToList();
+
+            if (!files.Any())
+            {
+                return new NotFoundObjectResult("Unable to retrieve check-in results for provided query");
+            }
 
             if (reverse)
             {
@@ -124,7 +132,7 @@ public class CheckinController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unable to retrieve check-in results for {year}/{month}", year, month);
-            return new NoContentResult();
+            return StatusCode(500);
         }
     }
 }

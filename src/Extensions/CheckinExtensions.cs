@@ -5,8 +5,9 @@ namespace CheckinApi.Extensions;
 
 public static class CheckinExtensions
 {
-    public static List<CheckinResult> ConcatenateResults(this List<CheckinResult> checkinResults, string? columnDelimiter = "|")
+    public static List<CheckinResult> ConcatenateResults(this List<CheckinResult> checkinResults, string? columnDelimiter = null)
     {
+        string delimiter = string.IsNullOrWhiteSpace(columnDelimiter) ? "|" : columnDelimiter;
         var resultsByMonth = checkinResults.GroupBy(r => r.Month).ToList();
 
         var concatenatedResults = new List<CheckinResult>();
@@ -21,15 +22,17 @@ public static class CheckinExtensions
             {
                 if (sb.Length > 0)
                 {
-                    sb.Append(columnDelimiter);
+                    sb.Append(delimiter);
                 }
-
-                sb.Append(date.Day);
 
                 var matchingResult = resultGroup.FirstOrDefault(r => r.Date == date.ToString("yyyy-MM-dd"));
                 if (matchingResult != null)
                 {
-                    sb.Append($",{matchingResult.ResultsString}");
+                    sb.Append(matchingResult.ResultsString);
+                }
+                else
+                {
+                    sb.Append(date.Day);
                 }
             }
 

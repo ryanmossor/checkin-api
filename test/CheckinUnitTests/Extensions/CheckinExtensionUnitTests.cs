@@ -11,7 +11,7 @@ public class CheckinExtensionUnitTests
         // arrange
         var checkinResults = new List<CheckinResult>()
         {
-            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), "1,,2,,3"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), "28,1,,2,,3"),
         };
 
         // act
@@ -34,8 +34,8 @@ public class CheckinExtensionUnitTests
         // arrange
         var checkinResults = new List<CheckinResult>()
         {
-            new CheckinResult(new CheckinFields("sheet", "2024-03-27", "Mar", "AC1"), "1,2,3,4,5"),
-            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), ",1,2,3,4"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-27", "Mar", "AC1"), "27,1,2,3,4,5"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), "28,,1,2,3,4"),
         };
 
         // act
@@ -53,8 +53,8 @@ public class CheckinExtensionUnitTests
         // arrange
         var checkinResults = new List<CheckinResult>()
         {
-            new CheckinResult(new CheckinFields("sheet", "2024-03-27", "Mar", "AC1"), "1,2,3,4,5"),
-            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), ",1,2,3,4"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-27", "Mar", "AC1"), "27,1,2,3,4,5"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), "28,,1,2,3,4"),
         };
 
         // act
@@ -72,8 +72,8 @@ public class CheckinExtensionUnitTests
         // arrange
         var checkinResults = new List<CheckinResult>()
         {
-            new CheckinResult(new CheckinFields("sheet", "2024-03-24", "Mar", "Z1"), "1,2,3,4,5"),
-            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), ",1,2,3,4"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-24", "Mar", "Z1"), "24,1,2,3,4,5"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), "28,,1,2,3,4"),
         };
 
         // act
@@ -91,9 +91,9 @@ public class CheckinExtensionUnitTests
         // arrange
         var checkinResults = new List<CheckinResult>()
         {
-            new CheckinResult(new CheckinFields("sheet", "2024-03-27", "Mar", "AC1"), "1,2,3,4,5"),
-            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), ",1,2,3,4"),
-            new CheckinResult(new CheckinFields("sheet", "2024-04-12", "Apr", "N1"), ",,1,2,3"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-27", "Mar", "AC1"), "27,1,2,3,4,5"),
+            new CheckinResult(new CheckinFields("sheet", "2024-03-28", "Mar", "AD1"), "28,,1,2,3,4"),
+            new CheckinResult(new CheckinFields("sheet", "2024-04-12", "Apr", "N1"), "12,,,1,2,3"),
         };
 
         // act

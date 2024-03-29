@@ -28,7 +28,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         _config = config;
     }
 
-    public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates, bool concatResults)
+    public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates, bool concatResults, string? delimiter)
     {
         using (_logger.BeginScope("Processing check-in items for {@dates}", dates))
         {
@@ -51,7 +51,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                     var contents = await File.ReadAllTextAsync(Path.Combine(_config.ResultsDir, $"{date}.json"));
                     var item = contents.Deserialize<CheckinItem>();
 
-                    var resultsString = string.Join(",", _lists.FullChecklist.Select(x => item.FormResponse.GetValueOrDefault(x)));
+                    var resultsString = item.BuildResultsString(_lists.FullChecklist);
                     results.Add(new CheckinResult(item.CheckinFields, resultsString));
                     _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
                 }
@@ -63,7 +63,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
             if (concatResults)
             {
-                var concatenatedResults = results.ConcatenateResults();
+                var concatenatedResults = results.ConcatenateResults(delimiter);
                 _logger.LogInformation("Concatenated results: {@results}", concatenatedResults);
                 return new CheckinResponse(concatenatedResults);
             }
@@ -72,7 +72,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         }
     }
 
-    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue, bool concatResults, bool forceProcessing)
+    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue, bool concatResults, bool forceProcessing, string? delimiter)
     {
         var stopwatch = Stopwatch.StartNew();
         var unprocessed = new List<CheckinItem>();
@@ -100,15 +100,15 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                     continue;
                 }
 
-                var updatedItem = UpdateTimeInBed(item);
-                updatedItem = UpdateWeightData(updatedItem, weightData);
-                updatedItem = ProcessActivityData(updatedItem, activityData);
+                item.UpdateTimeInBed();
+                item.UpdateWeightData(weightData);
+                item.ProcessActivityData(activityData, _lists.TrackedActivities);
 
                 try
                 {
-                    var json = updatedItem.Serialize();
+                    var json = item.Serialize();
                     await File.WriteAllTextAsync(
-                        Path.Combine(_config.ResultsDir, $"{updatedItem.CheckinFields.Date}.json"),
+                        Path.Combine(_config.ResultsDir, $"{item.CheckinFields.Date}.json"),
                         json);
                 }
                 catch (Exception ex)
@@ -123,8 +123,8 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                         item.FormResponse.Keys.Where(x => !_lists.FullChecklist.Contains(x)));
                 }
 
-                var resultsString = string.Join(",", _lists.FullChecklist.Select(x => updatedItem.FormResponse.GetValueOrDefault(x)));
-                results.Add(new CheckinResult(updatedItem.CheckinFields, resultsString));
+                var resultsString = item.BuildResultsString(_lists.FullChecklist);
+                results.Add(new CheckinResult(item.CheckinFields, resultsString));
                 _logger.LogInformation("Results string: {resultsString}", resultsString);
             }
         }
@@ -138,7 +138,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
         if (concatResults)
         {
-            var concatenatedResults = results.ConcatenateResults();
+            var concatenatedResults = results.ConcatenateResults(delimiter);
             _logger.LogInformation("Concatenated results: {@results}", concatenatedResults);
             return new CheckinResponse(concatenatedResults, unprocessed);
         }
@@ -157,81 +157,20 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         var matchingWeightData = weightData.Any(w => w.Date == item.CheckinFields.Date);
         if (item.GetWeight && !matchingWeightData)
         {
-            _logger.LogWarning("getWeight flag set but no matching weight data found");
+            _logger.LogWarning("getWeight flag set but no matching weight data found. Skipping...");
             return true;
         }
 
-        var checkinDate = DateTime.Parse(item.CheckinFields.Date).Date;
         var itemContainsTrackedActivities = item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key));
-        var matchingActivityData = activityData.Any(a => DateTime.Parse(a.StartDateLocal).Date == checkinDate);
+        var matchingActivityData = activityData.Any(a => a.Date == item.CheckinFields.Date);
         if (itemContainsTrackedActivities && !matchingActivityData)
         {
             _logger.LogWarning(
-                "Tracked activities in queue but no activity data found for {@missingActivities}",
+                "Tracked activities in queue but no activity data found for {@missingActivities}. Skipping...",
                 item.FormResponse.Keys.Where(key => _lists.TrackedActivities.Contains(key)).ToList());
-
             return true;
         }
 
         return false;
-    }
-
-    private CheckinItem ProcessActivityData(CheckinItem item, List<StravaActivity> activityData)
-    {
-        if (activityData.Count == 0)
-        {
-            return item;
-        }
-
-        var date = DateTime.Parse(item.CheckinFields.Date);
-        foreach (var activity in _lists.TrackedActivities)
-        {
-            var matchingActivities = activityData
-                .Where(a => a.Type == activity && DateTime.Parse(a.StartDateLocal).Date == date.Date)
-                .ToList();
-
-            if (!matchingActivities.Any())
-            {
-                continue;
-            }
-
-            var activitySums = matchingActivities.Sum(a => a.Distance);
-
-            _logger.LogDebug("Sum for {activity}: {sum}", activity, activitySums);
-            item.FormResponse[activity] = activitySums.ToString();
-        }
-
-        return item;
-    }
-
-    private CheckinItem UpdateWeightData(CheckinItem item, List<Weight> weightData)
-    {
-        var data = weightData.FirstOrDefault(w => w.Date == item.CheckinFields.Date);
-        if (!item.GetWeight || data == null)
-        {
-            return item;
-        }
-
-        item.FormResponse["BMI"] = data.Bmi.ToString();
-        item.FormResponse["Body fat %"] = data.Fat.ToString();
-        item.FormResponse["Weight (lbs)"] = data.Lbs.ToString();
-
-        return item;
-    }
-
-    private CheckinItem UpdateTimeInBed(CheckinItem item)
-    {
-        if (item.SleepStart.HasValue && item.SleepEnd.HasValue)
-        {
-            var totalTime = TimeSpan.FromSeconds(item.SleepEnd.Value - item.SleepStart.Value).ToString(@"h\:mm");
-            item.FormResponse["Total Time in Bed"] = totalTime;
-        }
-        else
-        {
-            _logger.LogWarning(
-                "Missing sleep start and/or end time: {sleepStart}, {sleepEnd}", item.SleepStart, item.SleepEnd);
-        }
-
-        return item;
     }
 }
