@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text;
 using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
@@ -31,39 +30,46 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
     public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates, bool concatResults)
     {
-        var files = Directory.GetFiles(_config.ResultsDir).Select(Path.GetFileNameWithoutExtension);
-        var missingResults = dates.Split(',').Where(f => !files.Contains(f)).ToList();
-
-        if (missingResults.Any())
+        using (_logger.BeginScope("Processing check-in items for {@dates}", dates))
         {
-            _logger.LogError("Error retrieving data for {@missingResults}", missingResults);
-        }
+            var files = Directory.GetFiles(_config.ResultsDir).Select(Path.GetFileNameWithoutExtension);
+            var missingResults = dates.Split(',').Where(f => !files.Contains(f)).ToList();
 
-        var validDates = dates.Split(',').Order().Where(d => !missingResults.Contains(d));
-        _logger.LogDebug("Dates to process: {@dates}", validDates);
-
-        var results = new List<CheckinResult>();
-        foreach (var date in validDates)
-        {
-            try
+            if (missingResults.Any())
             {
-                var contents = await File.ReadAllTextAsync(Path.Combine(_config.ResultsDir, $"{date}.json"));
-                var item = contents.Deserialize<CheckinItem>();
-
-                var resultsString = string.Join(",", _lists.FullChecklist.Select(x => item.FormResponse.GetValueOrDefault(x)));
-                results.Add(new CheckinResult(item.CheckinFields, resultsString));
-                _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
+                _logger.LogError("Error retrieving data for {@missingResults}", missingResults);
             }
-            catch (Exception ex)
+
+            var validDates = dates.Split(',').Order().Where(d => !missingResults.Contains(d));
+            _logger.LogDebug("Processing valid dates: {@validDates}", validDates);
+
+            var results = new List<CheckinResult>();
+            foreach (var date in validDates)
             {
-                _logger.LogError(ex, "Error retrieving data for {date}", date);
+                try
+                {
+                    var contents = await File.ReadAllTextAsync(Path.Combine(_config.ResultsDir, $"{date}.json"));
+                    var item = contents.Deserialize<CheckinItem>();
+
+                    var resultsString = string.Join(",", _lists.FullChecklist.Select(x => item.FormResponse.GetValueOrDefault(x)));
+                    results.Add(new CheckinResult(item.CheckinFields, resultsString));
+                    _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error retrieving data for {date}", date);
+                }
             }
+
+            if (concatResults)
+            {
+                var concatenatedResults = results.ConcatenateResults();
+                _logger.LogInformation("Concatenated results: {@results}", concatenatedResults);
+                return new CheckinResponse(concatenatedResults);
+            }
+
+            return new CheckinResponse(results);
         }
-
-        if (concatResults)
-            return new CheckinResponse(ConcatenateResults(results));
-
-        return new CheckinResponse(results);
     }
 
     public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue, bool concatResults, bool forceProcessing)
@@ -131,7 +137,11 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             unprocessed);
 
         if (concatResults)
-            return new CheckinResponse(ConcatenateResults(results), unprocessed);
+        {
+            var concatenatedResults = results.ConcatenateResults();
+            _logger.LogInformation("Concatenated results: {@results}", concatenatedResults);
+            return new CheckinResponse(concatenatedResults, unprocessed);
+        }
 
         return new CheckinResponse(results, unprocessed);
     }
@@ -169,7 +179,9 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
     private CheckinItem ProcessActivityData(CheckinItem item, List<StravaActivity> activityData)
     {
         if (activityData.Count == 0)
+        {
             return item;
+        }
 
         var date = DateTime.Parse(item.CheckinFields.Date);
         foreach (var activity in _lists.TrackedActivities)
@@ -179,7 +191,9 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
                 .ToList();
 
             if (!matchingActivities.Any())
+            {
                 continue;
+            }
 
             var activitySums = matchingActivities.Sum(a => a.Distance);
 
@@ -192,12 +206,11 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
     private CheckinItem UpdateWeightData(CheckinItem item, List<Weight> weightData)
     {
-        if (!item.GetWeight)
-            return item;
-
         var data = weightData.FirstOrDefault(w => w.Date == item.CheckinFields.Date);
-        if (data == null)
+        if (!item.GetWeight || data == null)
+        {
             return item;
+        }
 
         item.FormResponse["BMI"] = data.Bmi.ToString();
         item.FormResponse["Body fat %"] = data.Fat.ToString();
@@ -220,43 +233,5 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         }
 
         return item;
-    }
-
-    private List<CheckinResult> ConcatenateResults(List<CheckinResult> checkinResults)
-    {
-        const char columnDelimiter = '|';
-
-        var resultsByMonth = checkinResults.GroupBy(r => r.Month).ToList();
-
-        var concatenatedResults = new List<CheckinResult>();
-        foreach (var resultGroup in resultsByMonth)
-        {
-            var dates = resultGroup.Select(r => DateTime.Parse(r.Date)).ToList();
-            var startDate = dates.Min();
-            var endDate = dates.Max();
-
-            var sb = new StringBuilder();
-            for (var date = startDate; date <= endDate; date = date.AddDays(1))
-            {
-                if (sb.Length > 0)
-                    sb.Append(columnDelimiter);
-
-                sb.Append(date.Day);
-
-                var matchingResult = resultGroup.FirstOrDefault(r => r.Date == date.ToString("yyyy-MM-dd"));
-                if (matchingResult != null)
-                    sb.Append($",{matchingResult.ResultsString}");
-            }
-
-            var firstRes = resultGroup.First();
-            var result = new CheckinResult(
-                new CheckinFields(firstRes.SpreadsheetName, firstRes.Date, firstRes.Month, firstRes.CellReference),
-                resultsString: sb.ToString());
-
-            _logger.LogInformation("Concatenated results for month {month}: {@res}", firstRes.Month, result);
-            concatenatedResults.Add(result);
-        }
-
-        return concatenatedResults;
     }
 }

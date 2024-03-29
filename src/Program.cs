@@ -20,13 +20,13 @@ builder.Configuration.AddJsonFile(config.SecretsFile, optional: false, reloadOnC
 builder.Services.AddSingleton(builder.Configuration.Get<CheckinSecrets>());
 
 Log.Logger = new LoggerConfiguration()
-     .Enrich.FromLogContext()
-     .MinimumLevel.Debug()
-     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-     .MinimumLevel.Override("System.Net.Http", builder.Environment.IsDevelopment() ? LogEventLevel.Debug : LogEventLevel.Warning)
-     .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
-     .WriteTo.Seq(builder.Configuration["Serilog:WriteTo:0:Args:serverUrl"] ?? string.Empty)
-     .CreateLogger();
+    .Enrich.FromLogContext()
+    .MinimumLevel.Debug()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System.Net.Http", builder.Environment.IsDevelopment() ? LogEventLevel.Debug : LogEventLevel.Warning)
+    .WriteTo.Console(restrictedToMinimumLevel: LogEventLevel.Warning)
+    .WriteTo.Seq(builder.Configuration["Serilog:WriteTo:0:Args:serverUrl"] ?? string.Empty)
+    .CreateLogger();
 
 // configures Serilog as ONLY logging provider
 builder.Host.UseSerilog(dispose: true);
@@ -80,7 +80,9 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = string.Empty;
 
     if (!app.Environment.IsDevelopment())
+    {
         options.SupportedSubmitMethods(SubmitMethod.Get);
+    }
 });
 
 // commented out to access via local network since dev cert untrusted
