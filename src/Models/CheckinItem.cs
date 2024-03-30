@@ -65,7 +65,6 @@ public class CheckinItem
             return;
         }
 
-        var date = DateTime.Parse(CheckinFields.Date);
         foreach (var activity in trackedActivities)
         {
             var matchingActivities = activityData

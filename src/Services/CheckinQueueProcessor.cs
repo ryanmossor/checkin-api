@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using CheckinApi.Config;
 using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
 using CheckinApi.Models;
@@ -8,57 +7,47 @@ namespace CheckinApi.Services;
 
 public class CheckinQueueProcessor : ICheckinQueueProcessor
 {
-    private readonly ICheckinLists _lists;
     private readonly IActivityService _activityService;
     private readonly IHealthTrackingService _healthTrackingService;
     private readonly ILogger<CheckinQueueProcessor> _logger;
-    private readonly CheckinConfig _config;
+    private readonly ICheckinRepository _repository;
 
     public CheckinQueueProcessor(
-        ICheckinLists lists,
         IActivityService activityService,
         IHealthTrackingService healthTrackingService,
         ILogger<CheckinQueueProcessor> logger,
-        CheckinConfig config)
+        ICheckinRepository repository)
     {
-        _lists = lists;
         _activityService = activityService;
         _healthTrackingService = healthTrackingService;
         _logger = logger;
-        _config = config;
+        _repository = repository;
     }
 
     public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates, bool concatResults, string? delimiter)
     {
         using (_logger.BeginScope("Processing check-in items for {@dates}", dates))
         {
-            var files = Directory.GetFiles(_config.ResultsDir).Select(Path.GetFileNameWithoutExtension);
-            var missingResults = dates.Split(',').Where(f => !files.Contains(f)).ToList();
+            var existingDates = _repository.GetAllCheckinDates();
+            var missingResults = dates.Split(',').Where(f => !existingDates.Contains(f)).ToList();
 
             if (missingResults.Any())
             {
                 _logger.LogError("Error retrieving data for {@missingResults}", missingResults);
             }
 
-            var validDates = dates.Split(',').Order().Where(d => !missingResults.Contains(d));
+            var validDates = dates.Split(',').Order().Where(d => !missingResults.Contains(d)).ToList();
             _logger.LogDebug("Processing valid dates: {@validDates}", validDates);
 
+            var checkinItems = await _repository.GetCheckinItemsAsync(validDates);
+            var checkinLists = await _repository.GetCheckinListsAsync();
             var results = new List<CheckinResult>();
-            foreach (var date in validDates)
-            {
-                try
-                {
-                    var contents = await File.ReadAllTextAsync(Path.Combine(_config.ResultsDir, $"{date}.json"));
-                    var item = contents.Deserialize<CheckinItem>();
 
-                    var resultsString = item.BuildResultsString(_lists.FullChecklist);
-                    results.Add(new CheckinResult(item.CheckinFields, resultsString));
-                    _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error retrieving data for {date}", date);
-                }
+            foreach (var item in checkinItems)
+            {
+                var resultsString = item.BuildResultsString(checkinLists.FullChecklist);
+                results.Add(new CheckinResult(item.CheckinFields, resultsString));
+                _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
             }
 
             if (concatResults)
@@ -72,7 +61,11 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         }
     }
 
-    public async Task<CheckinResponse> ProcessQueueAsync(List<CheckinItem> queue, bool concatResults, bool forceProcessing, string? delimiter)
+    public async Task<CheckinResponse> ProcessQueueAsync(
+        List<CheckinItem> queue,
+        bool concatResults,
+        bool forceProcessing,
+        string? delimiter)
     {
         var stopwatch = Stopwatch.StartNew();
         var unprocessed = new List<CheckinItem>();
@@ -84,8 +77,9 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             weightData = await _healthTrackingService.GetWeightDataAsync(queue);
         }
 
+        var lists = await _repository.GetCheckinListsAsync();
         var activityData = new List<StravaActivity>();
-        if (queue.Any(queueItem => queueItem.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key))))
+        if (queue.Any(queueItem => queueItem.FormResponse.Keys.Any(key => lists.TrackedActivities.Contains(key))))
         {
             activityData = await _activityService.GetActivityDataAsync(queue);
         }
@@ -94,7 +88,7 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         {
             using (_logger.BeginScope("Processing check-in item for {date}", item.CheckinFields.Date))
             {
-                if (!forceProcessing && ShouldSkipItem(item, weightData, activityData))
+                if (!forceProcessing && ShouldSkipItem(item, weightData, activityData, lists.TrackedActivities))
                 {
                     unprocessed.Add(item);
                     continue;
@@ -102,28 +96,18 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
                 item.UpdateTimeInBed();
                 item.UpdateWeightData(weightData);
-                item.ProcessActivityData(activityData, _lists.TrackedActivities);
+                item.ProcessActivityData(activityData, lists.TrackedActivities);
 
-                try
-                {
-                    var json = item.Serialize();
-                    await File.WriteAllTextAsync(
-                        Path.Combine(_config.ResultsDir, $"{item.CheckinFields.Date}.json"),
-                        json);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error writing check-in results to file");
-                }
+                await _repository.SaveCheckinItemAsync(item);
 
-                if (item.FormResponse.Keys.Any(x => !_lists.FullChecklist.Contains(x)))
+                if (item.FormResponse.Keys.Any(x => !lists.FullChecklist.Contains(x)))
                 {
                     _logger.LogInformation(
                         "Items in queue that aren't in full checklist: {@items}",
-                        item.FormResponse.Keys.Where(x => !_lists.FullChecklist.Contains(x)));
+                        item.FormResponse.Keys.Where(x => !lists.FullChecklist.Contains(x)));
                 }
 
-                var resultsString = item.BuildResultsString(_lists.FullChecklist);
+                var resultsString = item.BuildResultsString(lists.FullChecklist);
                 results.Add(new CheckinResult(item.CheckinFields, resultsString));
                 _logger.LogInformation("Results string: {resultsString}", resultsString);
             }
@@ -146,7 +130,11 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
         return new CheckinResponse(results, unprocessed);
     }
 
-    private bool ShouldSkipItem(CheckinItem item, List<Weight> weightData, List<StravaActivity> activityData)
+    private bool ShouldSkipItem(
+        CheckinItem item,
+        List<Weight> weightData,
+        List<StravaActivity> activityData,
+        List<string> trackedActivities)
     {
         if (!item.FormResponse.TryGetValue("Feel Well-Rested", out _))
         {
@@ -161,13 +149,13 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
             return true;
         }
 
-        var itemContainsTrackedActivities = item.FormResponse.Keys.Any(key => _lists.TrackedActivities.Contains(key));
+        var itemContainsTrackedActivities = item.FormResponse.Keys.Any(trackedActivities.Contains);
         var matchingActivityData = activityData.Any(a => a.Date == item.CheckinFields.Date);
         if (itemContainsTrackedActivities && !matchingActivityData)
         {
             _logger.LogWarning(
                 "Tracked activities in queue but no activity data found for {@missingActivities}. Skipping...",
-                item.FormResponse.Keys.Where(key => _lists.TrackedActivities.Contains(key)).ToList());
+                item.FormResponse.Keys.Where(trackedActivities.Contains).ToList());
             return true;
         }
 

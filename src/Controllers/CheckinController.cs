@@ -1,8 +1,6 @@
 using CheckinApi.Config;
-using CheckinApi.Extensions;
 using CheckinApi.Interfaces;
 using CheckinApi.Models;
-using CheckinApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CheckinApi.Controllers;
@@ -11,21 +9,21 @@ namespace CheckinApi.Controllers;
 [Route("api/[controller]")]
 public class CheckinController : ControllerBase
 {
-    private readonly ICheckinLists _lists;
     private readonly ICheckinQueueProcessor _processor;
     private readonly ILogger<CheckinController> _logger;
     private readonly CheckinConfig _config;
+    private readonly ICheckinRepository _repository;
 
     public CheckinController(
         ICheckinQueueProcessor processor,
-        ICheckinLists lists,
         ILogger<CheckinController> logger,
-        CheckinConfig config)
+        CheckinConfig config,
+        ICheckinRepository repository)
     {
         _processor = processor;
-        _lists = lists;
         _logger = logger;
         _config = config;
+        _repository = repository;
     }
 
     [HttpGet]
@@ -52,9 +50,7 @@ public class CheckinController : ControllerBase
 
         try
         {
-            var json = request.Serialize();
-            var filename = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.json";
-            await System.IO.File.WriteAllTextAsync(Path.Combine(_config.RequestsDir, filename), json);
+            await _repository.SaveCheckinRequestAsync(request);
         }
         catch (Exception ex)
         {
@@ -82,13 +78,17 @@ public class CheckinController : ControllerBase
     }
 
     [HttpGet("lists")]
-    public IActionResult GetCheckinLists() => new OkObjectResult(_lists);
+    public async Task<IActionResult> GetCheckinLists()
+    {
+        var lists = await _repository.GetCheckinListsAsync();
+        return new OkObjectResult(lists);
+    }
 
     [HttpPatch("lists")]
     public async Task<IActionResult> UpdateCheckinListsAsync([FromBody] CheckinLists lists)
     {
         _logger.LogDebug("Updating check-in lists: {@lists}", lists);
-        var result = await _lists.UpdateListsAsync(lists);
+        var result = await _repository.UpdateCheckinListsAsync(lists);
         return new OkObjectResult(result);
     }
 
@@ -97,8 +97,8 @@ public class CheckinController : ControllerBase
     {
         try
         {
-            var item = await System.IO.File.ReadAllTextAsync(Path.Combine(_config.ResultsDir, $"{date}.json"));
-            return new OkObjectResult(item.Deserialize<CheckinItem>());
+            var checkinItem = await _repository.GetCheckinItemAsync(date);
+            return new OkObjectResult(checkinItem);
         }
         catch (Exception ex)
         {

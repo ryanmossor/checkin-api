@@ -1,8 +1,9 @@
 using CheckinApi.Config;
 using CheckinApi.Interfaces;
+using CheckinApi.Repository;
 using CheckinApi.Services;
-using Serilog;
 using Serilog.Events;
+using Serilog;
 using Swashbuckle.AspNetCore.SwaggerUI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,13 +37,13 @@ builder.Host.UseSerilog(dispose: true);
 
 builder.Services.AddHttpClient();
 
-builder.Services.AddSingleton<ICheckinLists, CheckinLists>();
+builder.Services.AddSingleton<ICheckinRepository, CheckinFileRepository>();
 
 builder.Services.AddSingleton(s => new StravaAuthService(
     s.GetRequiredService<CheckinSecrets>(),
     s.GetRequiredService<HttpClient>(),
     s.GetRequiredService<ILogger<StravaAuthService>>(),
-    s.GetRequiredService<CheckinConfig>()));
+    s.GetRequiredService<ICheckinRepository>()));
 
 builder.Services.AddSingleton<IActivityService, StravaService>(s => new StravaService(
     s.GetRequiredService<HttpClient>(),
@@ -53,7 +54,7 @@ builder.Services.AddSingleton(s => new FitbitAuthService(
     s.GetRequiredService<CheckinSecrets>(),
     s.GetRequiredService<HttpClient>(),
     s.GetRequiredService<ILogger<FitbitAuthService>>(),
-    s.GetRequiredService<CheckinConfig>()));
+    s.GetRequiredService<ICheckinRepository>()));
 
 builder.Services.AddSingleton<IHealthTrackingService, FitbitService>(s => new FitbitService(
     s.GetRequiredService<HttpClient>(),

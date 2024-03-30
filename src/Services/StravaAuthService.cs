@@ -11,7 +11,7 @@ public class StravaAuthService : IStravaAuthService
     private readonly CheckinSecrets _secrets;
     private readonly HttpClient _httpClient;
     private readonly ILogger<StravaAuthService> _logger;
-    private readonly CheckinConfig _config;
+    private readonly ICheckinRepository _repository;
 
     public StravaAuthInfo Auth
     {
@@ -27,12 +27,12 @@ public class StravaAuthService : IStravaAuthService
         CheckinSecrets secrets,
         HttpClient httpClient,
         ILogger<StravaAuthService> logger,
-        CheckinConfig config)
+        ICheckinRepository repository)
     {
         _secrets = secrets;
         _httpClient = httpClient;
         _logger = logger;
-        _config = config;
+        _repository = repository;
     }
 
     public async Task RefreshTokenAsync()
@@ -58,7 +58,7 @@ public class StravaAuthService : IStravaAuthService
             var refreshedAuth = json.Deserialize<StravaAuthInfo>();
 
             _secrets.Strava.UpdateAuth(refreshedAuth);
-            await File.WriteAllTextAsync(_config.SecretsFile, _secrets.SerializePretty());
+            await _repository.UpdateCheckinSecretsAsync(_secrets);
         }
         catch (Exception ex)
         {

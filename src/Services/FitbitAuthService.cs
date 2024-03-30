@@ -14,14 +14,18 @@ public class FitbitAuthService : IFitbitAuthService
     private readonly CheckinSecrets _secrets;
     private readonly HttpClient _httpClient;
     private readonly ILogger<FitbitAuthService> _logger;
-    private readonly CheckinConfig _config;
+    private readonly ICheckinRepository _repository;
 
-    public FitbitAuthService(CheckinSecrets secrets, HttpClient httpClient, ILogger<FitbitAuthService> logger, CheckinConfig config)
+    public FitbitAuthService(
+        CheckinSecrets secrets,
+        HttpClient httpClient,
+        ILogger<FitbitAuthService> logger,
+        ICheckinRepository repository)
     {
         _secrets = secrets;
         _httpClient = httpClient;
         _logger = logger;
-        _config = config;
+        _repository = repository;
     }
 
     public FitbitAuthInfo Auth
@@ -64,7 +68,7 @@ public class FitbitAuthService : IFitbitAuthService
             var refreshedAuth = json.Deserialize<FitbitAuthInfo>();
 
             _secrets.Fitbit.UpdateAuth(refreshedAuth);
-            await File.WriteAllTextAsync(_config.SecretsFile, _secrets.SerializePretty());
+            await _repository.UpdateCheckinSecretsAsync(_secrets);
         }
         catch (Exception ex)
         {
