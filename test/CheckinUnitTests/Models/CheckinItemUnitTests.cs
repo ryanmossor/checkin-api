@@ -19,8 +19,8 @@ public class CheckinItemUnitTests
         item.UpdateTimeInBed();
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(3);
-        item.FormResponse["Total Time in Bed"].ShouldBe("7:42");
+        Assert.Equal(3, item.FormResponse.Keys.Count);
+        Assert.Equal("7:42", item.FormResponse["Total Time in Bed"]);
     }
 
     [Theory]
@@ -40,8 +40,8 @@ public class CheckinItemUnitTests
         item.UpdateTimeInBed();
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(2);
-        item.FormResponse.ShouldNotContainKey("Total Time in Bed");
+        Assert.Equal(2, item.FormResponse.Keys.Count);
+        Assert.DoesNotContain("Total Time in Bed", item.FormResponse.Keys);
     }
 
     [Fact]
@@ -58,10 +58,10 @@ public class CheckinItemUnitTests
         item.UpdateWeightData(weight);
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(5);
-        item.FormResponse["BMI"].ShouldBe("24.5");
-        item.FormResponse["Body fat %"].ShouldBe("17.2");
-        item.FormResponse["Weight (lbs)"].ShouldBe("188.7");
+        Assert.Equal(5, item.FormResponse.Keys.Count);
+        Assert.Equal("24.5", item.FormResponse["BMI"]);
+        Assert.Equal("17.2", item.FormResponse["Body fat %"]);
+        Assert.Equal("188.7", item.FormResponse["Weight (lbs)"]);
     }
 
     [Fact]
@@ -79,10 +79,10 @@ public class CheckinItemUnitTests
         item.UpdateWeightData(weight);
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(2);
-        item.FormResponse.ShouldNotContainKey("BMI");
-        item.FormResponse.ShouldNotContainKey("Body fat %");
-        item.FormResponse.ShouldNotContainKey("Weight (lbs)");
+        Assert.Equal(2, item.FormResponse.Keys.Count);
+        Assert.DoesNotContain("BMI", item.FormResponse.Keys);
+        Assert.DoesNotContain("Body fat %", item.FormResponse.Keys);
+        Assert.DoesNotContain("Weight (lbs)", item.FormResponse.Keys);
     }
 
     [Fact]
@@ -99,10 +99,10 @@ public class CheckinItemUnitTests
         item.UpdateWeightData(weight);
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(2);
-        item.FormResponse.ShouldNotContainKey("BMI");
-        item.FormResponse.ShouldNotContainKey("Body fat %");
-        item.FormResponse.ShouldNotContainKey("Weight (lbs)");
+        Assert.Equal(2, item.FormResponse.Keys.Count);
+        Assert.DoesNotContain("BMI", item.FormResponse.Keys);
+        Assert.DoesNotContain("Body fat %", item.FormResponse.Keys);
+        Assert.DoesNotContain("Weight (lbs)", item.FormResponse.Keys);
     }
 
     [Fact]
@@ -120,8 +120,8 @@ public class CheckinItemUnitTests
         item.ProcessActivityData(activityData, trackedActivities);
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(2);
-        item.FormResponse.Keys.Any(key => trackedActivities.Contains(key)).ShouldBeFalse();
+        Assert.Equal(2, item.FormResponse.Keys.Count);
+        Assert.DoesNotContain(item.FormResponse.Keys, key => trackedActivities.Contains(key));
     }
 
     [Fact]
@@ -142,8 +142,9 @@ public class CheckinItemUnitTests
         item.ProcessActivityData(activityData, trackedActivities);
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(3);
-        item.FormResponse.ShouldContainKeyAndValue("Hike", "8.6");
+        Assert.Equal(3, item.FormResponse.Keys.Count);
+        Assert.Contains("Hike", item.FormResponse.Keys);
+        Assert.Equal("8.6", item.FormResponse["Hike"]);
     }
 
     [Fact]
@@ -165,8 +166,9 @@ public class CheckinItemUnitTests
         item.ProcessActivityData(activityData, trackedActivities);
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(3);
-        item.FormResponse.ShouldContainKeyAndValue("Hike", "11.1");
+        Assert.Equal(3, item.FormResponse.Keys.Count);
+        Assert.Contains("Hike", item.FormResponse.Keys);
+        Assert.Equal("11.1", item.FormResponse["Hike"]);
     }
 
     [Fact]
@@ -188,9 +190,11 @@ public class CheckinItemUnitTests
         item.ProcessActivityData(activityData, trackedActivities);
 
         // assert
-        item.FormResponse.Keys.Count.ShouldBe(4);
-        item.FormResponse.ShouldContainKeyAndValue("Hike", "8.6");
-        item.FormResponse.ShouldContainKeyAndValue("Ride", "25.3");
+        Assert.Equal(4, item.FormResponse.Keys.Count);
+        Assert.Contains("Hike", item.FormResponse.Keys);
+        Assert.Equal("8.6", item.FormResponse["Hike"]);
+        Assert.Contains("Ride", item.FormResponse.Keys);
+        Assert.Equal("25.3", item.FormResponse["Ride"]);
     }
 
     [Fact]
@@ -208,8 +212,8 @@ public class CheckinItemUnitTests
         var result = item.BuildResultsString(fullChecklist);
 
         // assert
-        result.ShouldNotBeNull();
-        result.ShouldBe("29,1,1,1");
+        Assert.NotNull(result);
+        Assert.Equal("29,1,1,1", result);
     }
 
     [Fact]
@@ -227,7 +231,7 @@ public class CheckinItemUnitTests
         var result = item.BuildResultsString(fullChecklist);
 
         // assert
-        result.ShouldNotBeNull();
-        result.ShouldBe("29,1,,1,,1");
+        Assert.NotNull(result);
+        Assert.Equal("29,1,,1,,1", result);
     }
 }

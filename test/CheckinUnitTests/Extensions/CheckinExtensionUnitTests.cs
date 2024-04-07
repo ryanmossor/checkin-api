@@ -18,14 +18,13 @@ public class CheckinExtensionUnitTests
         var result = checkinResults.ConcatenateResults();
 
         // assert
-        result.ShouldNotBeNull();
-        result.Count.ShouldBe(1);
+        Assert.NotNull(result);
+        Assert.Single(result);
 
-        result[0].SpreadsheetName.ShouldBe(checkinResults[0].SpreadsheetName);
-        result[0].Date.ShouldBe(checkinResults[0].Date);
-        result[0].Month.ShouldBe(checkinResults[0].Month);
-        result[0].CellReference.ShouldBe(checkinResults[0].CellReference);
-        result[0].ResultsString.ShouldBe("28,1,,2,,3");
+        Assert.Equivalent(
+            new { result[0].SpreadsheetName, result[0].Month, result[0].Date, result[0].CellReference },
+            new { checkinResults[0].SpreadsheetName, checkinResults[0].Month, checkinResults[0].Date, checkinResults[0].CellReference });
+        Assert.Equal("28,1,,2,,3", result[0].ResultsString);
     }
 
     [Fact]
@@ -42,9 +41,13 @@ public class CheckinExtensionUnitTests
         var result = checkinResults.ConcatenateResults();
 
         // assert
-        result.ShouldNotBeNull();
-        result.Count.ShouldBe(1);
-        result[0].ResultsString.ShouldBe("27,1,2,3,4,5|28,,1,2,3,4");
+        Assert.NotNull(result);
+        Assert.Single(result);
+
+        Assert.Equivalent(
+            new { result[0].SpreadsheetName, result[0].Month, result[0].Date, result[0].CellReference },
+            new { checkinResults[0].SpreadsheetName, checkinResults[0].Month, checkinResults[0].Date, checkinResults[0].CellReference });
+        Assert.Equal("27,1,2,3,4,5|28,,1,2,3,4", result[0].ResultsString);
     }
 
     [Fact]
@@ -61,9 +64,13 @@ public class CheckinExtensionUnitTests
         var result = checkinResults.ConcatenateResults(columnDelimiter: "=:=");
 
         // assert
-        result.ShouldNotBeNull();
-        result.Count.ShouldBe(1);
-        result[0].ResultsString.ShouldBe("27,1,2,3,4,5=:=28,,1,2,3,4");
+        Assert.NotNull(result);
+        Assert.Single(result);
+
+        Assert.Equivalent(
+            new { result[0].SpreadsheetName, result[0].Month, result[0].Date, result[0].CellReference },
+            new { checkinResults[0].SpreadsheetName, checkinResults[0].Month, checkinResults[0].Date, checkinResults[0].CellReference });
+        Assert.Equal("27,1,2,3,4,5=:=28,,1,2,3,4", result[0].ResultsString);
     }
 
     [Fact]
@@ -80,9 +87,13 @@ public class CheckinExtensionUnitTests
         var result = checkinResults.ConcatenateResults();
 
         // assert
-        result.ShouldNotBeNull();
-        result.Count.ShouldBe(1);
-        result[0].ResultsString.ShouldBe("24,1,2,3,4,5|25|26|27|28,,1,2,3,4");
+        Assert.NotNull(result);
+        Assert.Single(result);
+
+        Assert.Equivalent(
+            new { result[0].SpreadsheetName, result[0].Month, result[0].Date, result[0].CellReference },
+            new { checkinResults[0].SpreadsheetName, checkinResults[0].Month, checkinResults[0].Date, checkinResults[0].CellReference });
+        Assert.Equal("24,1,2,3,4,5|25|26|27|28,,1,2,3,4", result[0].ResultsString);
     }
 
     [Fact]
@@ -100,19 +111,17 @@ public class CheckinExtensionUnitTests
         var result = checkinResults.ConcatenateResults();
 
         // assert
-        result.ShouldNotBeNull();
-        result.Count.ShouldBe(2);
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
 
-        result[0].SpreadsheetName.ShouldBe(checkinResults[0].SpreadsheetName);
-        result[0].Date.ShouldBe(checkinResults[0].Date);
-        result[0].Month.ShouldBe(checkinResults[0].Month);
-        result[0].CellReference.ShouldBe(checkinResults[0].CellReference);
-        result[0].ResultsString.ShouldBe("27,1,2,3,4,5|28,,1,2,3,4");
+        Assert.Equivalent(
+            new { result[0].SpreadsheetName, result[0].Month, result[0].Date, result[0].CellReference },
+            new { checkinResults[0].SpreadsheetName, checkinResults[0].Month, checkinResults[0].Date, checkinResults[0].CellReference });
+        Assert.Equal("27,1,2,3,4,5|28,,1,2,3,4", result[0].ResultsString);
 
-        result[1].SpreadsheetName.ShouldBe(checkinResults[2].SpreadsheetName);
-        result[1].Date.ShouldBe(checkinResults[2].Date);
-        result[1].Month.ShouldBe(checkinResults[2].Month);
-        result[1].CellReference.ShouldBe(checkinResults[2].CellReference);
-        result[1].ResultsString.ShouldBe("12,,,1,2,3");
+        Assert.Equivalent(
+            new { result[1].SpreadsheetName, result[1].Month, result[1].Date, result[1].CellReference },
+            new { checkinResults[2].SpreadsheetName, checkinResults[2].Month, checkinResults[2].Date, checkinResults[2].CellReference });
+        Assert.Equal("12,,,1,2,3", result[1].ResultsString);
     }
 }
