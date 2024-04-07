@@ -28,7 +28,7 @@ public class CheckinFileRepository : ICheckinRepository
         }
     }
 
-    public async Task SaveCheckinRequestAsync(CheckinRequest request)
+    public async Task SaveCheckinRequestAsync(List<CheckinItem> request)
     {
         try
         {

@@ -38,12 +38,12 @@ public class CheckinController : ControllerBase
 
     [HttpPost("process")]
     public async Task<IActionResult> ProcessCheckinQueueAsync(
-        [FromBody] CheckinRequest request,
+        [FromBody] List<CheckinItem> request,
         [FromQuery] bool concatResults,
         [FromQuery] bool forceProcessing,
         [FromQuery] string? delimiter)
     {
-        if (!request.Queue.Any())
+        if (!request.Any())
         {
             return new BadRequestObjectResult("No items in check-in queue");
         }
@@ -58,7 +58,7 @@ public class CheckinController : ControllerBase
         }
 
         var result = await _processor.ProcessQueueAsync(
-            request.Queue.OrderBy(x => x.CheckinFields.Date).ToList(),
+            request.OrderBy(x => x.CheckinFields.Date).ToList(),
             concatResults,
             forceProcessing,
             delimiter);

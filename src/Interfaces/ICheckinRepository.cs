@@ -7,7 +7,7 @@ public interface ICheckinRepository
 {
     Task UpdateCheckinSecretsAsync(CheckinSecrets secrets);
 
-    Task SaveCheckinRequestAsync(CheckinRequest request);
+    Task SaveCheckinRequestAsync(List<CheckinItem> request);
 
     Task SaveCheckinItemAsync(CheckinItem checkinItem);
 
