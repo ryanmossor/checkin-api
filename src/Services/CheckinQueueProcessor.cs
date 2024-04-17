@@ -26,39 +26,38 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
     public async Task<CheckinResponse> ProcessSavedResultsAsync(string dates, bool concatResults, string? delimiter)
     {
-        using (_logger.BeginScope("Processing check-in items for {@dates}", dates))
+        using var scope = _logger.BeginScope("Processing check-in items for {@dates}", dates);
+
+        var existingDates = _repository.GetAllCheckinDates();
+        var missingResults = dates.Split(',').Where(f => !existingDates.Contains(f)).ToList();
+
+        if (missingResults.Any())
         {
-            var existingDates = _repository.GetAllCheckinDates();
-            var missingResults = dates.Split(',').Where(f => !existingDates.Contains(f)).ToList();
-
-            if (missingResults.Any())
-            {
-                _logger.LogError("Error retrieving data for {@missingResults}", missingResults);
-            }
-
-            var validDates = dates.Split(',').Order().Where(d => !missingResults.Contains(d)).ToList();
-            _logger.LogDebug("Processing valid dates: {@validDates}", validDates);
-
-            var checkinItems = await _repository.GetCheckinItemsAsync(validDates);
-            var checkinLists = await _repository.GetCheckinListsAsync();
-            var results = new List<CheckinResult>();
-
-            foreach (var item in checkinItems)
-            {
-                var resultsString = item.BuildResultsString(checkinLists.FullChecklist);
-                results.Add(new CheckinResult(item.CheckinFields, resultsString));
-                _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
-            }
-
-            if (concatResults)
-            {
-                var concatenatedResults = results.ConcatenateResults(delimiter);
-                _logger.LogInformation("Concatenated results: {@results}", concatenatedResults);
-                return new CheckinResponse(concatenatedResults);
-            }
-
-            return new CheckinResponse(results);
+            _logger.LogError("Error retrieving data for {@missingResults}", missingResults);
         }
+
+        var validDates = dates.Split(',').Order().Where(d => !missingResults.Contains(d)).ToList();
+        _logger.LogDebug("Processing valid dates: {@validDates}", validDates);
+
+        var checkinItems = await _repository.GetCheckinItemsAsync(validDates);
+        var checkinLists = await _repository.GetCheckinListsAsync();
+        var results = new List<CheckinResult>();
+
+        foreach (var item in checkinItems)
+        {
+            var resultsString = item.BuildResultsString(checkinLists.FullChecklist);
+            results.Add(new CheckinResult(item.CheckinFields, resultsString));
+            _logger.LogInformation("Results string for {date}: {resultsString}", resultsString, item.CheckinFields.Date);
+        }
+
+        if (concatResults)
+        {
+            var concatenatedResults = results.ConcatenateResults(delimiter);
+            _logger.LogInformation("Concatenated results: {@results}", concatenatedResults);
+            return new CheckinResponse(concatenatedResults);
+        }
+
+        return new CheckinResponse(results);
     }
 
     public async Task<CheckinResponse> ProcessQueueAsync(
@@ -86,31 +85,30 @@ public class CheckinQueueProcessor : ICheckinQueueProcessor
 
         foreach (var item in queue.OrderBy(x => x.CheckinFields.Date).ToList())
         {
-            using (_logger.BeginScope("Processing check-in item for {date}", item.CheckinFields.Date))
+            using var scope = _logger.BeginScope("Processing check-in item for {date}", item.CheckinFields.Date);
+
+            if (!forceProcessing && ShouldSkipItem(item, weightData, activityData, lists.TrackedActivities))
             {
-                if (!forceProcessing && ShouldSkipItem(item, weightData, activityData, lists.TrackedActivities))
-                {
-                    unprocessed.Add(item);
-                    continue;
-                }
-
-                item.UpdateTimeInBed();
-                item.UpdateWeightData(weightData);
-                item.ProcessActivityData(activityData, lists.TrackedActivities);
-
-                await _repository.SaveCheckinItemAsync(item);
-
-                if (item.FormResponse.Keys.Any(x => !lists.FullChecklist.Contains(x)))
-                {
-                    _logger.LogInformation(
-                        "Items in queue that aren't in full checklist: {@items}",
-                        item.FormResponse.Keys.Where(x => !lists.FullChecklist.Contains(x)));
-                }
-
-                var resultsString = item.BuildResultsString(lists.FullChecklist);
-                results.Add(new CheckinResult(item.CheckinFields, resultsString));
-                _logger.LogInformation("Results string: {resultsString}", resultsString);
+                unprocessed.Add(item);
+                continue;
             }
+
+            item.UpdateTimeInBed();
+            item.UpdateWeightData(weightData);
+            item.ProcessActivityData(activityData, lists.TrackedActivities);
+
+            await _repository.SaveCheckinItemAsync(item);
+
+            if (item.FormResponse.Keys.Any(x => !lists.FullChecklist.Contains(x)))
+            {
+                _logger.LogInformation(
+                    "Items in queue that aren't in full checklist: {@items}",
+                    item.FormResponse.Keys.Where(x => !lists.FullChecklist.Contains(x)));
+            }
+
+            var resultsString = item.BuildResultsString(lists.FullChecklist);
+            results.Add(new CheckinResult(item.CheckinFields, resultsString));
+            _logger.LogInformation("Results string: {resultsString}", resultsString);
         }
 
         _logger.LogInformation(
