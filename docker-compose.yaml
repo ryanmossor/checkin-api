@@ -8,12 +8,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5000:80"
+      - "5000:8080"
     environment:
       - TZ=${TIMEZONE}
       - DOTNET_CLI_TELEMETRY_OPTOUT=1
-      #- ASPNETCORE_HTTP_PORTS=5000
-      #- ASPNETCORE_URLS=http://+:5000
     volumes:
       - ${HOME}/docker/volumes/checkin-api:/app/data
     healthcheck:
