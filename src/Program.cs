@@ -5,6 +5,7 @@ using CheckinApi.Services;
 using Serilog.Events;
 using Serilog;
 using Swashbuckle.AspNetCore.SwaggerUI;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,7 +69,11 @@ builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename), true);
+});
 
 var app = builder.Build();
 

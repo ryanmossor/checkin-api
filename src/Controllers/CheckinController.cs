@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CheckinApi.Controllers;
 
+/// <summary>
+/// Endpoints related to check-in queue processing
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class CheckinController : ControllerBase
@@ -26,16 +29,59 @@ public class CheckinController : ControllerBase
         _repository = repository;
     }
 
+    /// <summary>
+    /// Gets AutoSheets-formatted results strings for a list of dates
+    /// </summary>
+    /// <param name="dates"></param>
+    /// <param name="concatResults"></param>
+    /// <param name="delimiter"></param>
+    /// <returns>AutoSheets-formatted results strings for a list of dates</returns>
+    /// <remarks>
+    /// Sample request:
+    /// <![CDATA[
+    ///     GET /api/checkin?dates=2024-04-01,2024-04-15&concatResults=true
+    /// ]]>
+    /// </remarks>
+    /// <response code="200">AutoSheets-formatted results strings for a list of dates</response>
     [HttpGet]
     public async Task<IActionResult> ProcessCheckinDatesAsync(
         [FromQuery] string dates,
         [FromQuery] bool concatResults,
         [FromQuery] string? delimiter)
     {
-        var result = await _processor.ProcessSavedResultsAsync(dates, concatResults, delimiter);
+        CheckinResponse result = await _processor.ProcessSavedResultsAsync(dates, concatResults, delimiter);
         return new OkObjectResult(result);
     }
 
+    /// <summary>
+    /// Processes a list of check-in queue items
+    /// </summary>
+    /// <returns>Processed results strings formatted for AutoSheets</returns>
+    /// <remarks>
+    /// Sample request:
+    ///
+    ///     POST /api/checkin/process
+    ///     {
+    ///         "checkinFields": {
+    ///             "spreadsheetName": "sheet name",
+    ///             "date": "2024-04-30",
+    ///             "month": "Apr",
+    ///             "cellReference": "AF1"
+    ///         },
+    ///         "formResponse": {
+    ///             "item1": "1",
+    ///             "item2": "1",
+    ///             "item3": "1"
+    ///         },
+    ///         "getWeight": true,
+    ///         "sleepStart": 0,
+    ///         "sleepEnd": 0
+    ///     }
+    ///
+    /// </remarks>
+    /// <response code="200">Returns object containing AutoSheets-formatted results strings for each month</response>
+    /// <response code="400">If request is incorrectly formatted</response>
+    /// <response code="500">If error occured while processing request</response>
     [HttpPost("process")]
     public async Task<IActionResult> ProcessCheckinQueueAsync(
         [FromBody] List<CheckinItem> request,
@@ -57,7 +103,7 @@ public class CheckinController : ControllerBase
             _logger.LogError(ex, "Error writing request to file");
         }
 
-        var result = await _processor.ProcessQueueAsync(
+        CheckinResponse result = await _processor.ProcessQueueAsync(
             request.OrderBy(x => x.CheckinFields.Date).ToList(),
             concatResults,
             forceProcessing,
@@ -66,38 +112,77 @@ public class CheckinController : ControllerBase
         return new OkObjectResult(result);
     }
 
-    [HttpPost("single")] // test, remove
-    public async Task<IActionResult> ProcessSingleCheckinItemAsync(
-        [FromBody] CheckinItem item,
-        [FromQuery] bool concatResults,
-        [FromQuery] bool forceProcessing,
-        [FromQuery] string? delimiter)
-    {
-        var result = await _processor.ProcessQueueAsync(new List<CheckinItem> { item }, concatResults, forceProcessing, delimiter);
-        return new OkObjectResult(result);
-    }
-
+    /// <summary>
+    /// Gets full checklist and tracked activities list
+    /// </summary>
+    /// <returns>Full checklist and tracked activities list</returns>
+    /// <remarks>
+    /// Sample request:
+    ///
+    ///     GET /api/checkin/lists
+    ///
+    /// </remarks>
+    /// <response code="200">Returns list of dates with available check-in data</response>
+    /// <response code="500">If error occured while processing request</response>
     [HttpGet("lists")]
     public async Task<IActionResult> GetCheckinLists()
     {
-        var lists = await _repository.GetCheckinListsAsync();
+        CheckinLists? lists = await _repository.GetCheckinListsAsync();
         return new OkObjectResult(lists);
     }
 
+    /// <summary>
+    /// Updates full checklist and tracked activities list
+    /// </summary>
+    /// <param name="lists"></param>
+    /// <returns>Updated check-in lists</returns>
+    /// <remarks>
+    /// Sample request:
+    ///
+    ///     PATCH /api/checkin/lists
+    ///     {
+    ///         "fullChecklist": {
+    ///             "item1",
+    ///             "item2",
+    ///             "item3"
+    ///         },
+    ///         "trackedActivities": {
+    ///             "tracked1",
+    ///             "tracked2"
+    ///         }
+    ///     }
+    ///
+    /// </remarks>
+    /// <response code="200">Updated check-in lists</response>
+    /// <response code="500">If error occured while processing request</response>
     [HttpPatch("lists")]
     public async Task<IActionResult> UpdateCheckinListsAsync([FromBody] CheckinLists lists)
     {
         _logger.LogDebug("Updating check-in lists: {@lists}", lists);
-        var result = await _repository.UpdateCheckinListsAsync(lists);
+        CheckinLists result = await _repository.UpdateCheckinListsAsync(lists);
         return new OkObjectResult(result);
     }
 
+    /// <summary>
+    /// Gets check-in data for a single date
+    /// </summary>
+    /// <param name="date"></param>
+    /// <returns>CheckinItem object containing data for requested date</returns>
+    /// <remarks>
+    /// Sample request:
+    ///
+    ///     GET /api/checkin/date/2024-03-15
+    ///
+    /// </remarks>
+    /// <response code="200">CheckinItem object containing data for requested date</response>
+    /// <response code="404">If no dates found matching provided query</response>
+    /// <response code="500">If error occured while processing request</response>
     [HttpGet("date/{date}")]
     public async Task<IActionResult> GetCheckinItemByDateAsync([FromRoute] string date)
     {
         try
         {
-            var checkinItem = await _repository.GetCheckinItemAsync(date);
+            CheckinItem? checkinItem = await _repository.GetCheckinItemAsync(date);
             return new OkObjectResult(checkinItem);
         }
         catch (Exception ex)
@@ -107,6 +192,22 @@ public class CheckinController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gets a list of dates for which processed check-in data is available
+    /// </summary>
+    /// <param name="year"></param>
+    /// <param name="month"></param>
+    /// <param name="reverse"></param>
+    /// <returns>A list of dates with available check-in data for the provided month</returns>
+    /// <remarks>
+    /// Sample request:
+    ///
+    ///     GET /api/checkin/2024/03?reverse=true
+    ///
+    /// </remarks>
+    /// <response code="200">Returns list of dates with available check-in data</response>
+    /// <response code="404">If no dates found matching provided query</response>
+    /// <response code="500">If error occured while processing request</response>
     [HttpGet("{year}/{month}")]
     public IActionResult GetItemsByMonth([FromRoute] string year, [FromRoute] string month, [FromQuery] bool reverse)
     {
