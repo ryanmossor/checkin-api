@@ -4,15 +4,15 @@ namespace CheckinApi.Models;
 
 public class CheckinFields
 {
-    public string SpreadsheetName { get; }
+    public string SpreadsheetId { get; }
     public string Date { get; }
     public string Month { get; }
     public string CellReference { get; }
 
     [JsonConstructor]
-    public CheckinFields(string spreadsheetName, string date, string month, string cellReference)
+    public CheckinFields(string spreadsheetId, string date, string month, string cellReference)
     {
-        SpreadsheetName = spreadsheetName;
+        SpreadsheetId = spreadsheetId;
         Date = date;
         Month = month;
         CellReference = cellReference;

@@ -38,7 +38,7 @@ public static class CheckinExtensions
 
             var firstRes = resultGroup.First();
             var result = new CheckinResult(
-                new CheckinFields(firstRes.SpreadsheetName, firstRes.Date, firstRes.Month, firstRes.CellReference),
+                new CheckinFields(firstRes.SpreadsheetId, firstRes.Date, firstRes.Month, firstRes.CellReference),
                 resultsString: sb.ToString());
 
             concatenatedResults.Add(result);

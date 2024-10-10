@@ -63,7 +63,7 @@ public class CheckinController : ControllerBase
     ///     POST /api/checkin/process
     ///     {
     ///         "checkinFields": {
-    ///             "spreadsheetName": "sheet name",
+    ///             "spreadsheetId": "sheet ID",
     ///             "date": "2024-04-30",
     ///             "month": "Apr",
     ///             "cellReference": "AF1"

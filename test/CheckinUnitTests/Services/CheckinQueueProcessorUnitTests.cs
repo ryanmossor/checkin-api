@@ -66,7 +66,7 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Single(result.Results);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("31,1,,,,9:14:00 PM,4:57:00 PM,4,,,", result.Results[0].ResultsString);
     }
@@ -153,7 +153,7 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Single(result.Results);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("31,,,,,,,4,24.5,17.2,188.7", result.Results[0].ResultsString);
     }
@@ -187,12 +187,12 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Equal(2, result.Results.Count);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("25,,,,,,,3,24.2,16.8,186.7", result.Results[0].ResultsString);
 
         Assert.Equivalent(
-            new { result.Results[1].SpreadsheetName, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
+            new { result.Results[1].SpreadsheetId, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
             item2.CheckinFields);
         Assert.Equal("31,,,,,,,4,24.5,17.2,188.7", result.Results[1].ResultsString);
     }
@@ -221,7 +221,7 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Single(result.Results);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("31,,,8.6,,,,3,,,", result.Results[0].ResultsString);
     }
@@ -255,12 +255,12 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Empty(result.Unprocessed);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("30,,,4.7,,,,3,,,", result.Results[0].ResultsString);
 
         Assert.Equivalent(
-            new { result.Results[1].SpreadsheetName, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
+            new { result.Results[1].SpreadsheetId, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
             item2.CheckinFields);
         Assert.Equal("31,,,8.6,,,,3,,,", result.Results[1].ResultsString);
     }
@@ -290,7 +290,7 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Single(result.Results);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("30,,,13.3,,,,3,,,", result.Results[0].ResultsString);
     }
@@ -320,7 +320,7 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Single(result.Results);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("30,,,8.6,4.7,,,3,,,", result.Results[0].ResultsString);
     }
@@ -349,7 +349,7 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Empty(result.Unprocessed);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("30,,,,,,,3,,,|31,,,,,,,4,,,", result.Results[0].ResultsString);
     }
@@ -386,12 +386,12 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Equal(2, result.Results.Count);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("30,,,,,,,3,,,|31,,,,,,,4,,,", result.Results[0].ResultsString);
 
         Assert.Equivalent(
-            new { result.Results[1].SpreadsheetName, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
+            new { result.Results[1].SpreadsheetId, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
             item3.CheckinFields);
         Assert.Equal("1,,,,,,,2,,,|2,,,,,,,3,,,", result.Results[1].ResultsString);
     }
@@ -420,7 +420,7 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Single(result.Results);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("28,,,,,,,3,,,|29|30|31,,,,,,,4,,,", result.Results[0].ResultsString);
     }
@@ -454,17 +454,17 @@ public partial class CheckinQueueProcessorUnitTests
         Assert.Equal(3, result.Results.Count);
 
         Assert.Equivalent(
-            new { result.Results[0].SpreadsheetName, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
+            new { result.Results[0].SpreadsheetId, result.Results[0].Month, result.Results[0].Date, result.Results[0].CellReference },
             item1.CheckinFields);
         Assert.Equal("30,,,1,,,,3,,,", result.Results[0].ResultsString);
 
         Assert.Equivalent(
-            new { result.Results[1].SpreadsheetName, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
+            new { result.Results[1].SpreadsheetId, result.Results[1].Month, result.Results[1].Date, result.Results[1].CellReference },
             item2.CheckinFields);
         Assert.Equal("31,,1,,,,,3,,,", result.Results[1].ResultsString);
 
         Assert.Equivalent(
-            new { result.Results[2].SpreadsheetName, result.Results[2].Month, result.Results[2].Date, result.Results[2].CellReference },
+            new { result.Results[2].SpreadsheetId, result.Results[2].Month, result.Results[2].Date, result.Results[2].CellReference },
             item3.CheckinFields);
         Assert.Equal("1,1,,,,,,,,,", result.Results[2].ResultsString);
     }

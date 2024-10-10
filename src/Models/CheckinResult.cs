@@ -4,7 +4,7 @@ namespace CheckinApi.Models;
 
 public class CheckinResult
 {
-    public string SpreadsheetName { get; }
+    public string SpreadsheetId { get; }
     public string Date { get; }
     public string Month { get; }
     public string CellReference { get; }
@@ -13,7 +13,7 @@ public class CheckinResult
     [JsonConstructor]
     public CheckinResult(CheckinFields checkinFields, string resultsString)
     {
-        SpreadsheetName = checkinFields.SpreadsheetName;
+        SpreadsheetId = checkinFields.SpreadsheetId;
         Date = checkinFields.Date;
         Month = checkinFields.Month;
         CellReference = checkinFields.CellReference;
