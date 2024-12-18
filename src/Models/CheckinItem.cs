@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using Serilog;
 
@@ -7,6 +8,7 @@ public class CheckinItem
 {
     public CheckinFields CheckinFields { get; }
     public Dictionary<string, string> FormResponse { get; }
+    public string TimeZoneId { get; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool GetWeight { get; }
@@ -22,18 +24,58 @@ public class CheckinItem
         CheckinFields checkinFields,
         Dictionary<string, string> formResponse,
         bool getWeight,
+        string timeZoneId,
         long? sleepStart = null,
         long? sleepEnd = null)
     {
         CheckinFields = checkinFields;
         FormResponse = formResponse;
         GetWeight = getWeight;
+        TimeZoneId = timeZoneId;
         SleepStart = sleepStart;
         SleepEnd = sleepEnd;
     }
 
+    private string? UnixToFormattedTime(long unixTs)
+    {
+        DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(unixTs);
+
+        try
+        {
+            // TimeZoneId = e.g., "America/Chicago"
+            TimeZoneInfo timeZone = TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId);
+            DateTime targetTime = TimeZoneInfo.ConvertTime(dateTimeOffset.UtcDateTime, TimeZoneInfo.Utc, timeZone);
+            string formatted = targetTime.ToString("h:mm:00 tt", CultureInfo.InvariantCulture);
+            return formatted;
+        }
+        catch (Exception ex)
+        {
+            Log.Logger.Error(ex, "Error converting unix timestamp {unixTs} to formatted time for {timeZoneId} time zone", unixTs, TimeZoneId);
+        }
+
+        return null;
+    }
+
     public void UpdateTimeInBed()
     {
+        if (SleepStart.HasValue)
+        {
+            string? formattedTime = UnixToFormattedTime(SleepStart.Value);
+            if (formattedTime != null)
+            {
+                FormResponse["Bedtime"] = formattedTime;
+            }
+        }
+
+        if (SleepEnd.HasValue)
+        {
+            string? formattedTime = UnixToFormattedTime(SleepEnd.Value);
+            if (formattedTime != null)
+            {
+                FormResponse["Wake-up time"] = formattedTime;
+            }
+        }
+
         if (SleepStart.HasValue && SleepEnd.HasValue)
         {
             var totalTime = TimeSpan.FromSeconds(SleepEnd.Value - SleepStart.Value).ToString(@"h\:mm");

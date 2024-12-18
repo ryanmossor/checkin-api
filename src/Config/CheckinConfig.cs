@@ -7,4 +7,5 @@ public class CheckinConfig
     public string SecretsFile { get; init; } = null!;
     public string RequestsDir { get; init; } = null!;
     public string ResultsDir { get; init; } = null!;
+    public string EditedResultsDir { get; init; } = null!;
 }

@@ -62,7 +62,21 @@ public class CheckinFileRepository : ICheckinRepository
         try
         {
             var json = checkinItem.Serialize();
-            await File.WriteAllTextAsync(Path.Combine(_config.ResultsDir, $"{checkinItem.CheckinFields.Date}.json"), json);
+
+            string path = Path.Combine(_config.ResultsDir, $"{checkinItem.CheckinFields.Date}.json");
+            if (File.Exists(path))
+            {
+                if (!Directory.Exists(_config.EditedResultsDir))
+                {
+                    Directory.CreateDirectory(_config.EditedResultsDir);
+                }
+
+                string backupPath = Path.Combine(_config.EditedResultsDir, $"{checkinItem.CheckinFields.Date}_edited_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}.json");
+                _logger.LogInformation("Result already exists for {date}, moving original to {backupFilename}", checkinItem.CheckinFields.Date, backupPath);
+                File.Move(path, backupPath);
+            }
+
+            await File.WriteAllTextAsync(path, json);
         }
         catch (Exception ex)
         {
